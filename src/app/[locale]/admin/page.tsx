@@ -1,15 +1,40 @@
 "use client";
 // dev-only 内容管理后台（完整 CMS 风格）
-// 三栏：左侧集合导航 + 中间卡片列表(搜索/标签筛选) + 右侧字段表单(必填校验/Markdown 实时预览)
+// 仪表盘布局：左侧集合导航 + 顶栏(搜索/新建/主题) + 列表卡片网格 / 分栏编辑器(表单 | 实时预览)
 // 沿用 /api/admin/[collection] 的 CRUD 接口，仅 development 可用。
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "@/i18n/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import {
+  LayoutDashboard,
+  FileText,
+  FolderKanban,
+  Link2,
+  User,
+  Plus,
+  Search,
+  Trash2,
+  ArrowLeft,
+  LogOut,
+  Save,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-const COLLECTIONS = ["posts", "projects", "profile", "links"] as const;
+const COLLECTIONS = ["posts", "projects", "links", "profile", "settings"] as const;
 type Collection = (typeof COLLECTIONS)[number];
+
+// 集合图标映射
+const COL_ICON: Record<Collection, LucideIcon> = {
+  posts: FileText,
+  projects: FolderKanban,
+  links: Link2,
+  profile: User,
+  settings: Settings,
+};
 
 // 构建期内联：生产构建为 false，线上静态站点不含管理端接口，直接给出说明而不是登录框。
 // （管理端 API 是动态路由，静态导出时不会产出，请求只会 404）
@@ -21,6 +46,7 @@ const META: Record<Collection, { label: string; tagField: string | null; single:
   projects: { label: "项目", tagField: "tech", single: false },
   links: { label: "友链", tagField: null, single: false },
   profile: { label: "个人资料", tagField: null, single: true },
+  settings: { label: "站点设置", tagField: null, single: true },
 };
 
 // 字段 schema：驱动表单渲染、校验与提交构造
@@ -103,13 +129,55 @@ const FIELDS: Record<Collection, FieldDef[]> = {
     { key: "url", label: "URL", type: "url", required: true },
     { key: "desc", label: "描述", type: "textarea" },
   ],
+  settings: [
+    { key: "siteName", label: "站点名称", type: "text", required: true, placeholder: "xuniw 的技术站" },
+    { key: "brand", label: "品牌字标", type: "text", placeholder: "xuniw" },
+    { key: "bio", label: "关于页简介", type: "textarea" },
+    { key: "footerNote", label: "页脚简介", type: "textarea" },
+    {
+      key: "socials",
+      label: "社交链接",
+      type: "objectArray",
+      itemFields: [
+        { key: "type", label: "类型", type: "select", options: ["github", "email", "twitter", "wechat", "link"] },
+        { key: "url", label: "URL", type: "url", required: true },
+        { key: "label", label: "显示名(可选)", type: "text" },
+      ],
+    },
+    {
+      key: "seo",
+      label: "SEO（按语言）",
+      type: "object",
+      itemFields: [
+        {
+          key: "zh",
+          label: "中文",
+          type: "object",
+          itemFields: [
+            { key: "title", label: "标题", type: "text" },
+            { key: "description", label: "描述", type: "textarea" },
+          ],
+        },
+        {
+          key: "en",
+          label: "English",
+          type: "object",
+          itemFields: [
+            { key: "title", label: "Title", type: "text" },
+            { key: "description", label: "Description", type: "textarea" },
+          ],
+        },
+      ],
+    },
+  ],
 };
 
 // CMS 文档是 schema-less 的，值可能是字符串/数组/嵌套对象，统一用 unknown 承载，
 // 在具体消费处再做窄化，避免 any 满天飞。
 type Doc = Record<string, unknown>;
 
-function titleOf(r: Doc): string {
+function titleOf(c: Collection, r: Doc): string {
+  if (c === "settings") return String(r.siteName ?? META.settings.label);
   return String(r.title ?? r.name ?? r._id ?? "(无标题)");
 }
 function summaryOf(c: Collection, r: Doc): string {
@@ -210,9 +278,13 @@ export default function AdminPage() {
   // 刷新后用现有会话 Cookie 恢复登录态（Cookie 为 httpOnly，前端读不到内容）
   useEffect(() => {
     let alive = true;
+    const ctrl = new AbortController();
+    // 兜底超时：JS 未水合 / dev 资源被跨域拦截时请求可能一直不返回，
+    // 超时后直接落到登录页，避免永远停在「正在校验登录状态」
+    const timer = setTimeout(() => ctrl.abort(), 6000);
     (async () => {
       try {
-        const res = await fetch("/api/admin/session");
+        const res = await fetch("/api/admin/session", { signal: ctrl.signal });
         const j = await res.json();
         if (alive) setAuthed(res.ok && j.ok === true);
       } catch {
@@ -223,6 +295,8 @@ export default function AdminPage() {
     })();
     return () => {
       alive = false;
+      clearTimeout(timer);
+      ctrl.abort();
     };
   }, []);
 
@@ -338,7 +412,7 @@ export default function AdminPage() {
   }
 
   async function del(r: Doc) {
-    if (!confirm(`确认删除「${titleOf(r)}」？`)) return;
+    if (!confirm(`确认删除「${titleOf(collection, r)}」？`)) return;
     await fetch(`/api/admin/${collection}?id=${r._id}`, { method: "DELETE" });
     if (selectedId === String(r._id)) {
       setMode("idle");
@@ -365,16 +439,21 @@ export default function AdminPage() {
     return [...set];
   }, [records, collection]);
 
+  const isSingle = META[collection].single;
+
   // 生产静态站点不含管理端接口，直接说明，避免显示一个永远登录不进去的框
   if (!ADMIN_AVAILABLE) {
     return (
-      <div className="fixed inset-0 z-50 bg-background text-foreground flex items-center justify-center p-4">
-        <div className="w-full max-w-sm border border-border rounded-xl p-6 shadow-sm text-center">
+      <div className="admin-bg fixed inset-0 z-50 flex items-center justify-center p-4 text-foreground">
+        <div className="card w-full max-w-sm p-6 text-center">
+          <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] text-white shadow-[0_8px_24px_var(--glow)]">
+            <LayoutDashboard className="h-5 w-5" />
+          </div>
           <h1 className="text-xl font-bold">内容管理后台</h1>
-          <p className="text-sm text-muted mt-3">
+          <p className="mt-3 text-sm text-muted">
             线上站点是静态导出产物，不含管理端接口。请在本地 <code>npm run dev</code> 后访问本页。
           </p>
-          <Link href="/" className="block text-center text-sm text-muted mt-4 hover:text-primary">
+          <Link href="/" className="mt-4 block text-center text-sm text-primary hover:underline">
             返回站点首页
           </Link>
         </div>
@@ -384,38 +463,47 @@ export default function AdminPage() {
 
   if (checking) {
     return (
-      <div className="fixed inset-0 z-50 bg-background text-foreground flex items-center justify-center p-4">
-        <p className="text-sm text-muted">正在校验登录状态…</p>
+      <div className="admin-bg fixed inset-0 z-50 flex items-center justify-center p-4 text-foreground">
+        <div className="flex items-center gap-3 text-sm text-muted">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          正在校验登录状态…
+        </div>
       </div>
     );
   }
 
   if (!authed) {
     return (
-      <div className="fixed inset-0 z-50 bg-background text-foreground flex items-center justify-center p-4">
-        <div className="w-full max-w-sm border border-border rounded-xl p-6 shadow-sm">
-          <h1 className="text-xl font-bold">内容管理后台</h1>
-          <p className="text-sm text-muted mt-2">
-            调试后台，口令默认 <code>admin</code>（可设 <code>ADMIN_PASSWORD</code> 覆盖）
-          </p>
+      <div className="admin-bg fixed inset-0 z-50 flex items-center justify-center p-4 text-foreground">
+        <div className="card w-full max-w-sm p-7">
+          <div className="mb-5 flex flex-col items-center text-center">
+            <div className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] text-white shadow-[0_8px_24px_var(--glow)]">
+              <LayoutDashboard className="h-6 w-6" />
+            </div>
+            <h1 className="text-xl font-bold">内容管理后台</h1>
+            <p className="mt-2 text-sm text-muted">
+              调试后台，口令默认 <code className="rounded bg-muted/30 px-1">admin</code>（可设{" "}
+              <code className="rounded bg-muted/30 px-1">ADMIN_PASSWORD</code> 覆盖）
+            </p>
+          </div>
           <input
             type="password"
             value={password}
             autoFocus
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && login()}
-            className="border border-border rounded-md px-3 py-2 w-full mt-4 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="dash-input"
             placeholder="口令"
           />
-          {loginErr && <p className="text-sm text-red-500 mt-2">{loginErr}</p>}
+          {loginErr && <p className="mt-2 text-sm text-red-500">{loginErr}</p>}
           <button
             onClick={login}
             disabled={loggingIn || !password}
-            className="mt-4 w-full px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 disabled:opacity-50"
+            className="btn btn-primary mt-4 w-full"
           >
             {loggingIn ? "登录中…" : "进入后台"}
           </button>
-          <Link href="/" className="block text-center text-sm text-muted mt-3 hover:text-primary">
+          <Link href="/" className="mt-4 block text-center text-sm text-muted hover:text-primary">
             返回站点首页
           </Link>
         </div>
@@ -423,135 +511,272 @@ export default function AdminPage() {
     );
   }
 
+  // 实时预览用的派生值（编辑器右栏）
+  const pvTitle = String(form.title ?? form.name ?? "");
+  const pvSummary = summaryOf(collection, form);
+  const pvTags = tagsOf(collection, form);
+  const pvCover = String(form.cover ?? "");
+  const pvDate = String(form.date ?? "");
+  const pvBody = String(form.body ?? "");
+
   return (
-    <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col md:flex-row overflow-hidden">
-      {/* 左侧集合导航 */}
-      <aside className="border-b md:border-b-0 md:border-r border-border flex md:flex-col md:w-56 shrink-0">
-        <div className="px-4 py-3 font-bold border-b border-border hidden md:block">内容管理</div>
-        <nav className="flex md:flex-col overflow-x-auto">
-          {COLLECTIONS.map((c) => (
-            <button
-              key={c}
-              onClick={() => switchCollection(c)}
-              className={`px-4 py-3 text-left whitespace-nowrap md:w-full hover:bg-muted/30 ${
-                collection === c ? "bg-primary/10 text-primary font-semibold" : "text-foreground"
-              }`}
-            >
-              {META[c].label}
-              <span className="text-xs text-muted ml-1">({c})</span>
-            </button>
-          ))}
+    <div className="admin-bg fixed inset-0 z-50 flex text-foreground">
+      {/* 左侧集合导航（桌面） */}
+      <aside className="glass hidden w-64 shrink-0 flex-col border-r border-border md:flex lg:w-72">
+        <div className="flex h-16 items-center gap-3 border-b border-border px-5">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] text-white shadow-[0_8px_24px_var(--glow)]">
+            <LayoutDashboard className="h-5 w-5" />
+          </div>
+          <div className="leading-tight">
+            <div className="text-sm font-semibold">内容管理</div>
+            <div className="text-[11px] text-subtle">CMS Console</div>
+          </div>
+        </div>
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {COLLECTIONS.map((c) => {
+            const Icon = COL_ICON[c];
+            return (
+              <button
+                key={c}
+                onClick={() => switchCollection(c)}
+                className={`nav-item ${collection === c ? "nav-item-active" : ""}`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{META[c].label}</span>
+                <span className="text-[11px] uppercase text-subtle">{c}</span>
+              </button>
+            );
+          })}
         </nav>
-        <div className="hidden md:block mt-auto p-3 border-t border-border text-xs text-muted space-y-1">
-          <Link href="/" className="block hover:text-primary">← 返回站点</Link>
-          <button onClick={logout} className="block text-left hover:text-primary">退出登录</button>
+        <div className="space-y-1 border-t border-border p-3 text-sm">
+          <Link href="/" className="nav-item">
+            <ArrowLeft className="h-4 w-4 shrink-0" />
+            返回站点
+          </Link>
+          <button onClick={logout} className="nav-item">
+            <LogOut className="h-4 w-4 shrink-0" />
+            退出登录
+          </button>
         </div>
       </aside>
 
       {/* 右侧主区 */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* 顶部工具栏 */}
-        <header className="h-14 border-b border-border flex items-center gap-3 px-4 shrink-0">
-          <h2 className="font-semibold">{META[collection].label}</h2>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜索标题 / slug / 标签…"
-            className="border border-border rounded-md px-3 py-1.5 text-sm flex-1 min-w-0 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          {!META[collection].single && (
-            <button
-              onClick={startCreate}
-              className="px-3 py-1.5 bg-primary text-white rounded-md text-sm hover:opacity-90 shrink-0"
-            >
-              + 新建
-            </button>
-          )}
-          <SaveBadge save={save} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* 顶栏 */}
+        <header className="glass flex h-16 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-base font-semibold">{META[collection].label}</span>
+            {isSingle && <span className="tag-pill shrink-0">单条</span>}
+          </div>
+          <div className="relative ml-2 flex-1 max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜索标题 / slug / 标签…"
+              className="dash-input pl-9"
+            />
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {mode !== "idle" && (
+              <button
+                onClick={() => switchCollection(collection)}
+                className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
+              >
+                <ArrowLeft className="h-4 w-4" /> 列表
+              </button>
+            )}
+            {(!isSingle || (isSingle && records.length === 0)) && (
+              <button onClick={startCreate} className="btn btn-primary">
+                <Plus className="h-4 w-4" /> 新建
+              </button>
+            )}
+            <ThemeToggle />
+            <SaveBadge save={save} />
+          </div>
         </header>
 
-        <div className="flex-1 flex flex-col md:flex-row min-h-0">
-          {/* 中间列表 */}
-          <section className="md:w-96 border-b md:border-b-0 md:border-r border-border overflow-y-auto shrink-0 md:max-h-full">
-            {META[collection].tagField && allTags.length > 0 && (
-              <div className="flex flex-wrap gap-1 p-3 border-b border-border sticky top-0 bg-background z-10">
-                <TagChip label="全部" active={activeTag === null} onClick={() => setActiveTag(null)} />
-                {allTags.map((t) => (
-                  <TagChip key={t} label={t} active={activeTag === t} onClick={() => setActiveTag(t)} />
-                ))}
+        {/* 移动端集合切换 */}
+        <div className="glass flex gap-1 overflow-x-auto border-b border-border px-3 py-2 md:hidden">
+          {COLLECTIONS.map((c) => {
+            const Icon = COL_ICON[c];
+            return (
+              <button
+                key={c}
+                onClick={() => switchCollection(c)}
+                className={`nav-item flex-1 ${collection === c ? "nav-item-active" : ""}`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {META[c].label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 内容区 */}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {mode === "idle" ? (
+            /* 列表：卡片网格 */
+            <div className="h-full overflow-y-auto p-4 md:p-6">
+              <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">
+                <span>共 {records.length} 条</span>
+                {activeTag && (
+                  <span className="tag-pill tag-pill-brand">
+                    {activeTag}
+                    <button
+                      onClick={() => setActiveTag(null)}
+                      className="ml-1 text-primary hover:text-foreground"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
               </div>
-            )}
-            <ul className="divide-y divide-border">
-              {filtered.length === 0 && (
-                <li className="p-4 text-sm text-muted">
-                  {records.length === 0 ? "暂无记录，点「新建」添加" : "无匹配结果"}
-                </li>
+
+              {META[collection].tagField && allTags.length > 0 && (
+                <div className="mb-4 flex flex-wrap gap-1.5">
+                  <TagChip label="全部" active={activeTag === null} onClick={() => setActiveTag(null)} />
+                  {allTags.map((t) => (
+                    <TagChip key={t} label={t} active={activeTag === t} onClick={() => setActiveTag(t)} />
+                  ))}
+                </div>
               )}
-              {filtered.map((r, i) => (
-                <li
-                  key={String(r._id ?? i)}
-                  className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/30 ${
-                    selectedId === String(r._id) ? "bg-primary/10" : ""
-                  }`}
-                  onClick={() => startEdit(r)}
-                >
-                  {r.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={String(r.cover)} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
-                  ) : (
-                    <div className="w-12 h-12 rounded bg-muted/30 flex items-center justify-center text-muted text-xs shrink-0">
-                      {String(r.title ?? r.name ?? "?").slice(0, 1)}
+
+              {filtered.length === 0 ? (
+                <div className="card p-10 text-center text-muted">
+                  {records.length === 0 ? "暂无记录，点右上角「新建」添加" : "无匹配结果"}
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {filtered.map((r, i) => {
+                    const Icon = COL_ICON[collection];
+                    return (
+                      <article
+                        key={String(r._id ?? i)}
+                        onClick={() => startEdit(r)}
+                        className="dash-card group cursor-pointer overflow-hidden"
+                      >
+                        <div className="relative aspect-[16/10] overflow-hidden bg-elevated">
+                          {r.cover ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={String(r.cover)}
+                              alt=""
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-subtle">
+                              <Icon className="h-8 w-8 opacity-40" />
+                            </div>
+                          )}
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                          {!isSingle && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                del(r);
+                              }}
+                              aria-label="删除"
+                              className="icon-btn absolute right-2 top-2 bg-black/40 text-white backdrop-blur hover:bg-black/60"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3 className="truncate font-semibold">{titleOf(collection, r)}</h3>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted">
+                            {summaryOf(collection, r) || "—"}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {tagsOf(collection, r).map((t) => (
+                              <span key={t} className="tag-pill">
+                                {t}
+                              </span>
+                            ))}
+                            {collection === "posts" && r.date != null && (
+                              <span className="tag-pill">{String(r.date)}</span>
+                            )}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* 编辑器：左表单 | 右实时预览 */
+            <div className="grid h-full grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
+              {/* 左：表单 */}
+              <div className="overflow-y-auto p-4 md:p-6">
+                <div className="mb-5 flex items-center gap-3">
+                  <button onClick={() => switchCollection(collection)} className="icon-btn" aria-label="返回列表">
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <div className="min-w-0">
+                    <div className="text-xs text-subtle">
+                      {META[collection].label} · {mode === "create" ? "新建" : "编辑"}
                     </div>
+                    <div className="truncate text-sm font-semibold">
+                      {titleOf(collection, form) || (mode === "create" ? "新条目" : "—")}
+                    </div>
+                  </div>
+                  <button
+                    onClick={saveDoc}
+                    disabled={save.state === "saving"}
+                    className="btn btn-primary ml-auto"
+                  >
+                    <Save className="h-4 w-4" />
+                    {save.state === "saving" ? "保存中…" : "保存"}
+                  </button>
+                </div>
+                <div className="space-y-5">
+                  {FIELDS[collection].map((f) => (
+                    <FieldRow
+                      key={f.key}
+                      def={f}
+                      value={form[f.key]}
+                      onChange={(v) => setForm({ ...form, [f.key]: v })}
+                    />
+                  ))}
+                </div>
+              </div>
+              {/* 右：实时预览 */}
+              <div className="hidden overflow-y-auto bg-surface/40 md:block">
+                <div className="mx-auto max-w-2xl p-6 md:p-8">
+                  {pvCover && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={pvCover}
+                      alt=""
+                      className="mb-5 w-full rounded-xl border border-border object-cover"
+                    />
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{titleOf(r)}</div>
-                    <div className="text-xs text-muted truncate">{summaryOf(collection, r)}</div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {tagsOf(collection, r).map((t) => (
-                        <span key={t} className="text-[10px] rounded-full bg-muted/30 px-2 py-0.5">
+                  <h1 className="text-3xl font-bold tracking-tight">{pvTitle || "未命名"}</h1>
+                  {pvTags.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {pvTags.map((t) => (
+                        <span key={t} className="tag-pill">
                           {t}
                         </span>
                       ))}
-                      {collection === "posts" && r.date != null && (
-                        <span className="text-[10px] text-muted">{String(r.date)}</span>
-                      )}
                     </div>
-                  </div>
-                  {!META[collection].single && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        del(r);
-                      }}
-                      className="text-xs text-red-500 hover:underline shrink-0"
-                    >
-                      删
-                    </button>
                   )}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* 右侧表单 */}
-          <section className="flex-1 overflow-y-auto p-6">
-            {mode === "idle" ? (
-              <div className="text-muted text-sm mt-10 text-center">
-                从左侧选择一条记录编辑，或点「新建」添加{META[collection].label}
+                  {pvDate && <div className="mt-2 text-sm text-subtle">{pvDate}</div>}
+                  {pvSummary && <p className="mt-3 text-muted">{pvSummary}</p>}
+                  <hr className="my-5 border-border" />
+                  <div className="markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                      {pvBody || "*（正文为空）*"}
+                    </ReactMarkdown>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <FormPanel
-                collection={collection}
-                form={form}
-                setForm={setForm}
-                onSave={saveDoc}
-                saving={save.state === "saving"}
-                isCreate={mode === "create"}
-              />
-            )}
-          </section>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
@@ -559,16 +784,18 @@ export default function AdminPage() {
 function SaveBadge({ save }: { save: { state: string; msg: string } }) {
   if (save.state === "idle") return null;
   const color =
-    save.state === "ok" ? "text-green-600" : save.state === "error" ? "text-red-500" : "text-muted";
-  return <span className={`text-sm ${color} shrink-0`}>{save.msg}</span>;
+    save.state === "ok" ? "text-green-500" : save.state === "error" ? "text-red-500" : "text-muted";
+  return <span className={`shrink-0 text-sm ${color}`}>{save.msg}</span>;
 }
 
 function TagChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`text-xs rounded-full px-2 py-0.5 border ${
-        active ? "bg-primary text-white border-primary" : "border-border text-muted hover:text-foreground"
+      className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+        active
+          ? "border-primary bg-primary text-white"
+          : "border-border text-muted hover:border-border-strong hover:text-foreground"
       }`}
     >
       {label}
@@ -576,47 +803,108 @@ function TagChip({ label, active, onClick }: { label: string; active: boolean; o
   );
 }
 
-function FormPanel({
-  collection,
-  form,
-  setForm,
-  onSave,
-  saving,
-  isCreate,
+function FieldRow({
+  def,
+  value,
+  onChange,
 }: {
-  collection: Collection;
-  form: Doc;
-  setForm: (d: Doc) => void;
-  onSave: () => void;
-  saving: boolean;
-  isCreate: boolean;
+  def: FieldDef;
+  value: unknown;
+  onChange: (v: unknown) => void;
 }) {
-  function setField(key: string, value: unknown) {
-    setForm({ ...form, [key]: value });
+  // 各输入控件要的是具体类型，这里统一窄化一次
+  const asText = typeof value === "string" ? value : value == null ? "" : String(value);
+  const asList = Array.isArray(value) ? (value as string[]) : [];
+  const asRows = Array.isArray(value) ? (value as Doc[]) : [];
+  const asObject = value && typeof value === "object" && !Array.isArray(value) ? (value as Doc) : {};
+
+  const label = (
+    <label className="mb-1 block text-sm font-medium">
+      {def.label}
+      {def.required && <span className="ml-0.5 text-red-500">*</span>}
+    </label>
+  );
+  const baseInput =
+    "dash-input";
+
+  if (def.type === "markdown") {
+    return (
+      <div>
+        {label}
+        <MarkdownEditor value={asText} onChange={onChange} />
+      </div>
+    );
   }
-  const fields = FIELDS[collection];
+  if (def.type === "textarea") {
+    return (
+      <div>
+        {label}
+        <textarea
+          value={asText}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          placeholder={def.placeholder}
+          className={`${baseInput} font-mono`}
+        />
+      </div>
+    );
+  }
+  if (def.type === "tags") {
+    return (
+      <div>
+        {label}
+        <TagInput value={asList} onChange={onChange} />
+      </div>
+    );
+  }
+  if (def.type === "objectArray") {
+    return (
+      <div>
+        {label}
+        <ObjectArrayInput def={def} value={asRows} onChange={onChange} />
+      </div>
+    );
+  }
+  if (def.type === "object") {
+    return (
+      <div>
+        {label}
+        <ObjectInput def={def} value={asObject} onChange={onChange} />
+      </div>
+    );
+  }
+  if (def.type === "select") {
+    return (
+      <div>
+        {label}
+        <select value={asText} onChange={(e) => onChange(e.target.value)} className={baseInput}>
+          <option value="">（默认）</option>
+          {def.options?.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+  // text / date / url
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">{isCreate ? "新建" : "编辑"} · {META[collection].label}</h3>
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 disabled:opacity-50"
-        >
-          {saving ? "保存中…" : "保存"}
-        </button>
-      </div>
-      <div className="space-y-4">
-        {fields.map((f) => (
-          <FieldRow key={f.key} def={f} value={form[f.key]} onChange={(v) => setField(f.key, v)} />
-        ))}
-      </div>
+    <div>
+      {label}
+      <input
+        type={def.type === "date" ? "date" : def.type === "url" ? "url" : "text"}
+        value={asText}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={def.placeholder}
+        className={baseInput}
+      />
+      {def.help && <p className="mt-1 text-xs text-muted">{def.help}</p>}
     </div>
   );
 }
 
-// Markdown 编辑器：工具栏（格式插入 + 图片上传）+ 正文 + 实时预览
+// Markdown 编辑器：工具栏（格式插入 + 图片上传）+ 正文 + 实时预览（移动端显示，桌面端预览在右栏）
 function MarkdownEditor({
   value,
   onChange,
@@ -673,7 +961,8 @@ function MarkdownEditor({
     }
   }
 
-  const btn = "px-2 py-1 text-xs border border-border rounded hover:bg-muted/30 text-foreground";
+  const btn =
+    "rounded-lg border border-border px-2 py-1 text-xs text-muted transition-colors hover:border-border-strong hover:bg-[color-mix(in_srgb,var(--foreground)_7%,transparent)] hover:text-foreground";
   // 只存纯数据，插入动作在 onClick 里触发（避免渲染期访问 textarea ref）
   const tools: { label: string; title: string; before: string; after: string; ph: string }[] = [
     { label: "H2", title: "标题", before: "\n## ", after: "", ph: "标题" },
@@ -687,7 +976,7 @@ function MarkdownEditor({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1 mb-2">
+      <div className="mb-2 flex flex-wrap items-center gap-1">
         {tools.map((t) => (
           <button
             key={t.label}
@@ -715,119 +1004,17 @@ function MarkdownEditor({
         onChange={(e) => onChange(e.target.value)}
         rows={12}
         placeholder="支持 Markdown，用上方工具栏插入格式或上传图片"
-        className="w-full border border-border rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm font-mono"
+        className="dash-input font-mono"
       />
-      <div className="mt-3">
-        <div className="text-xs text-muted mb-1">实时预览</div>
-        <div className="border border-border rounded-md p-4 bg-muted/5">
-          <div className="markdown-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-              {value || "*（空）*"}
-            </ReactMarkdown>
-          </div>
+      {/* 移动端无右栏预览，这里单独展示；桌面端预览在右栏 */}
+      <div className="mt-3 md:hidden">
+        <div className="mb-1 text-xs text-muted">实时预览</div>
+        <div className="markdown-body rounded-md border border-border p-4">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+            {value || "*（空）*"}
+          </ReactMarkdown>
         </div>
       </div>
-    </div>
-  );
-}
-
-function FieldRow({
-  def,
-  value,
-  onChange,
-}: {
-  def: FieldDef;
-  value: unknown;
-  onChange: (v: unknown) => void;
-}) {
-  // 各输入控件要的是具体类型，这里统一窄化一次
-  const asText = typeof value === "string" ? value : value == null ? "" : String(value);
-  const asList = Array.isArray(value) ? (value as string[]) : [];
-  const asRows = Array.isArray(value) ? (value as Doc[]) : [];
-  const asObject = value && typeof value === "object" && !Array.isArray(value) ? (value as Doc) : {};
-
-  const label = (
-    <label className="block text-sm font-medium mb-1">
-      {def.label}
-      {def.required && <span className="text-red-500 ml-0.5">*</span>}
-    </label>
-  );
-  const baseInput =
-    "w-full border border-border rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
-
-  if (def.type === "markdown") {
-    return (
-      <div>
-        {label}
-        <MarkdownEditor value={asText} onChange={onChange} />
-      </div>
-    );
-  }
-  if (def.type === "textarea") {
-    return (
-      <div>
-        {label}
-        <textarea
-          value={asText}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          placeholder={def.placeholder}
-          className={baseInput + " font-mono"}
-        />
-      </div>
-    );
-  }
-  if (def.type === "tags") {
-    return (
-      <div>
-        {label}
-        <TagInput value={asList} onChange={onChange} />
-      </div>
-    );
-  }
-  if (def.type === "objectArray") {
-    return (
-      <div>
-        {label}
-        <ObjectArrayInput def={def} value={asRows} onChange={onChange} />
-      </div>
-    );
-  }
-  if (def.type === "object") {
-    return (
-      <div>
-        {label}
-        <ObjectInput def={def} value={asObject} onChange={onChange} />
-      </div>
-    );
-  }
-  if (def.type === "select") {
-    return (
-      <div>
-        {label}
-        <select value={asText} onChange={(e) => onChange(e.target.value)} className={baseInput}>
-          <option value="">（默认）</option>
-          {def.options?.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-  // text / date / url
-  return (
-    <div>
-      {label}
-      <input
-        type={def.type === "date" ? "date" : def.type === "url" ? "url" : "text"}
-        value={asText}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={def.placeholder}
-        className={baseInput}
-      />
-      {def.help && <p className="text-xs text-muted mt-1">{def.help}</p>}
     </div>
   );
 }
@@ -843,7 +1030,7 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
     setDraft("");
   }
   return (
-    <div className="flex flex-wrap gap-1 items-center border border-border rounded-md px-2 py-2 bg-background">
+    <div className="dash-input flex flex-wrap items-center gap-1 py-2">
       {value.map((t) => (
         <span key={t} className="inline-flex items-center gap-1 rounded-full bg-muted/30 px-2 py-0.5 text-xs">
           {t}
@@ -863,7 +1050,7 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
         }}
         onBlur={add}
         placeholder="输入后回车添加"
-        className="flex-1 min-w-[8rem] bg-transparent outline-none text-sm py-0.5"
+        className="min-w-[8rem] flex-1 bg-transparent py-0.5 text-sm outline-none"
       />
     </div>
   );
@@ -882,7 +1069,7 @@ function ObjectInput({
   const itemFields = def.itemFields ?? [];
   const obj = value && typeof value === "object" ? value : {};
   return (
-    <div className="border border-border rounded-md p-3 space-y-3">
+    <div className="dash-card space-y-3 p-3">
       {itemFields.map((f) => (
         <FieldRow
           key={f.key}
@@ -913,28 +1100,32 @@ function ObjectArrayInput({
   return (
     <div className="space-y-3">
       {value.map((item, idx) => (
-        <div key={idx} className="border border-border rounded-md p-3 space-y-2 relative">
+        <div key={idx} className="dash-card relative space-y-2 p-3">
           <button
             onClick={() => onChange(value.filter((_, i) => i !== idx))}
-            className="absolute top-2 right-2 text-xs text-red-500 hover:underline"
+            className="icon-btn absolute right-2 top-2"
           >
-            删除
+            <Trash2 className="h-4 w-4" />
           </button>
           {itemFields.map((f) => (
             <div key={f.key}>
-              <label className="block text-xs text-muted mb-0.5">{f.label}</label>
+              <label className="mb-0.5 block text-xs text-muted">{f.label}</label>
               {f.type === "textarea" ? (
                 <textarea
                   value={cellText(item[f.key])}
-                  onChange={(e) => onChange(value.map((it, i) => (i === idx ? { ...it, [f.key]: e.target.value } : it)))}
+                  onChange={(e) =>
+                    onChange(value.map((it, i) => (i === idx ? { ...it, [f.key]: e.target.value } : it)))
+                  }
                   rows={2}
-                  className="w-full border border-border rounded px-2 py-1 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="dash-input"
                 />
               ) : (
                 <input
                   value={cellText(item[f.key])}
-                  onChange={(e) => onChange(value.map((it, i) => (i === idx ? { ...it, [f.key]: e.target.value } : it)))}
-                  className="w-full border border-border rounded px-2 py-1 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  onChange={(e) =>
+                    onChange(value.map((it, i) => (i === idx ? { ...it, [f.key]: e.target.value } : it)))
+                  }
+                  className="dash-input"
                 />
               )}
             </div>
@@ -943,7 +1134,7 @@ function ObjectArrayInput({
       ))}
       <button
         onClick={() => onChange([...value, Object.fromEntries(itemFields.map((f) => [f.key, ""]))])}
-        className="text-sm border border-border rounded px-3 py-1.5 hover:bg-muted/30"
+        className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted transition-colors hover:border-border-strong hover:text-foreground"
       >
         + 添加一行
       </button>

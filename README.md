@@ -35,6 +35,16 @@ pnpm dev
 > 因此 `build:export` 会在构建期间临时把 `src/app/api/admin` 挪出 `src/app`，构建结束必定还原（见 `scripts/build-export.mjs`）。
 > 日常开发用 `pnpm dev` / `pnpm build`，不受影响。
 
+### 启动报错排查
+
+| 现象 | 原因 / 处理 |
+|---|---|
+| `pnpm : 无法将"pnpm"项识别为...` | 未装 pnpm。执行 `npm i -g pnpm@9`（锁文件为 v9），或直接改用 `npm install` + `npm run dev` |
+| `Cannot find module '.../next/dist/bin/next'` | 依赖未装全（上次安装被中断）。删掉 `node_modules` 后重装 |
+| `npm error Cannot read properties of null (reading 'matches')` | 目录里残留 pnpm 的 `.pnpm` 结构，npm 无法兼容。**不要混用两种包管理器**：先彻底删除 `node_modules` 再装 |
+| `node_modules/next` 存在但内容为空、`ELIFECYCLE Command failed` | 当前环境不支持 pnpm 的目录链接（junction）。改用 `npm install` 的扁平结构 |
+| `npm warn EBADENGINE` | Node 版本偏低，建议 20.19+ 或 22.x |
+
 ## 2. 环境变量
 
 复制 `.env.example` 为 `.env.local`，按需填写。**不填也能本地跑**（内容回退到 `content/`）。
@@ -62,10 +72,43 @@ pnpm dev
    ```
 3. **云开发控制台**手动增删记录
 
-四个集合：`posts` / `projects` / `profile`（单条）/ `links`，字段清单见 **[云开发开通与建集合指南.md](./云开发开通与建集合指南.md)**。
+五个集合：`posts` / `projects` / `profile`（单条）/ `links` / `settings`（站点设置，单条），字段清单见 **[云开发开通与建集合指南.md](./云开发开通与建集合指南.md)**。
 
 本地 Markdown 文章放 `content/posts/*.md`，frontmatter 支持：
 `slug` / `title` / `date` / `tags` / `excerpt` / `lang` / `cover` / `source`（首发来源，文章页显示徽章）。
+
+### 3.1 内容来源对照：前端写死 vs 后台配置
+
+本站的"内容"分两路：**后台管理的动态内容**（存 CloudBase 文档库，经 `/zh/admin` 维护）与**前端写死的静态内容**（在代码 / 配置文件 / i18n 文案里，不经后台）。
+
+> 关键前提：页面是否读取后台数据，取决于是否配置了 `CLOUDBASE_*` 环境变量。
+> - 已配置 → 页面读取 CloudBase（即后台管理的内容）；
+> - 未配置 → 回退到本地兜底（`content/posts/*.md` + `src/lib/content.ts` 里的 `LOCAL_*` 常量），此时后台的修改**不会影响线上展示**（后台仍会把数据写进 CloudBase，只是站点没连它）。
+
+#### A. 后台管理（CloudBase 集合，经 `/zh/admin` 维护）
+
+| 集合 | 渲染位置 | 可经后台配置的字段 |
+|---|---|---|
+| `posts`（文章） | 首页「最新文章」、/blog 列表与详情 | slug、title、date、lang(zh/en)、tags、excerpt、cover、source(首发来源)、body(Markdown) |
+| `projects`（项目） | 首页「精选项目」、/projects 列表与详情 | slug、name、summary、tech[]、role、link、highlight、cover、body |
+| `links`（友链） | /links | name、url、desc |
+| `profile`（个人资料，单条） | /about | name、resumeUrl、wechat{name,qr,desc}、skills[]、timeline[{year,title,desc}] |
+| `settings`（站点设置，单条） | 全站（Header / Footer / About / SEO / OG 图） | siteName、brand、bio(关于页简介)、footerNote(页脚简介)、socials[{type,url,label}]、seo{zh:{title,description}, en:{title,description}} |
+
+#### B. 前端写死（不经后台，改这些要去动代码 / 文案）
+
+| 内容 | 所在位置 |
+|---|---|
+| 导航结构 & 文案（首页/博客/项目/关于/友链） | `Header.tsx` / `Footer.tsx` 的 `items` 数组，标签来自 i18n |
+| 首页 Hero 标题 / 副标题 / 标签 / CTA 文案 | i18n `Home` 命名空间 |
+| 关于页公众号描述兜底、各小节标题 | i18n `About` 命名空间 |
+| 页脚技术栈说明、版权年份 | i18n `Footer` 命名空间 |
+| 主题与配色（深浅色变量、品牌渐变） | `globals.css` 的 CSS 变量（`.dark` 下的 `--brand-*`、`--background` 等）+ `next-themes` 配置 |
+| 双语路由（zh/en）、语言切换项 | `src/i18n/routing.ts`、`navigation.ts` |
+| 评论 / 统计接入 | Giscus / Umami，靠环境变量（`NEXT_PUBLIC_GISCUS_*`、`NEXT_PUBLIC_UMAMI_*`）开启，非后台 |
+| 本地兜底内容（仅在未配置 CloudBase 时生效） | `content/posts/*.md`（文章）、`src/lib/content.ts` 内 `LOCAL_PROJECTS` / `LOCAL_PROFILE` / `LOCAL_LINKS` / `LOCAL_SETTINGS` 常量（项目/个人/友链/站点设置） |
+
+> 一句话总结：能"在后台点几下就改"的只有 A 表里的五张集合（含 `settings`）；站点的名字、品牌、社交链接、关于页简介、页脚简介、SEO 文案现在都走 `settings` 集合，其余导航文案、配色、双语、评论/统计仍属 B 表（代码/i18n/环境变量）。
 
 ## 4. 部署（EdgeOne Pages）
 

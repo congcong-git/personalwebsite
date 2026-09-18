@@ -8,7 +8,8 @@ import { Search } from "./Search";
 import type { SearchDoc } from "@/lib/search";
 
 // 顶部导航：品牌字标 + 板块入口（当前路由高亮）+ 搜索 + 语言/主题切换
-export function Header({ searchDocs }: { searchDocs: SearchDoc[] }) {
+// brand 来自后台 settings 集合（默认 "xuniw"）
+export function Header({ searchDocs, brand }: { searchDocs: SearchDoc[]; brand: string }) {
   const t = useTranslations("Nav");
   const locale = useLocale();
   const pathname = usePathname();
@@ -30,10 +31,10 @@ export function Header({ searchDocs }: { searchDocs: SearchDoc[] }) {
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
           <span className="grid h-7 w-7 place-items-center rounded-lg bg-[linear-gradient(135deg,var(--brand-from),var(--brand-to))] text-xs font-bold text-white shadow-[0_4px_12px_var(--glow)]">
-            x
+            {brand.charAt(0)}
           </span>
           <span className="text-base">
-            <span className="gradient-text font-bold">xuniw</span>
+            <span className="gradient-text font-bold">{brand}</span>
           </span>
         </Link>
         <nav className="flex items-center gap-0.5">

@@ -2,7 +2,7 @@
 // 仅当配置了 CLOUDBASE_ENV_ID / SECRET_ID / SECRET_KEY 时启用。
 // 使用动态 import，本地未安装 @cloudbase/node-sdk 也不影响构建（require 只在启用时触发）。
 import type { Locale } from "@/i18n/routing";
-import type { LinkItem, Post, Profile, Project } from "./content";
+import type { LinkItem, Post, Profile, Project, Settings } from "./content";
 
 export function isCMSEnabled(): boolean {
   return Boolean(
@@ -104,6 +104,31 @@ function mapLink(row: Record<string, unknown>): LinkItem {
   return { name: asString(row.name), url: asString(row.url), desc: asString(row.desc) };
 }
 
+function mapSettings(row: Record<string, unknown>): Settings {
+  const seoRow =
+    row.seo && typeof row.seo === "object" ? (row.seo as Record<string, unknown>) : null;
+  const sub = (k: string) =>
+    seoRow && seoRow[k] && typeof seoRow[k] === "object"
+      ? (seoRow[k] as Record<string, unknown>)
+      : {};
+  const socialsRow = Array.isArray(row.socials) ? (row.socials as Record<string, unknown>[]) : [];
+  return {
+    siteName: asString(row.siteName, "xuniw 的技术站"),
+    brand: asString(row.brand, "xuniw"),
+    bio: asString(row.bio),
+    footerNote: asString(row.footerNote),
+    socials: socialsRow.map((s) => ({
+      type: asString(s.type),
+      url: asString(s.url),
+      label: typeof s.label === "string" ? s.label : undefined,
+    })),
+    seo: {
+      zh: { title: asString(sub("zh").title), description: asString(sub("zh").description) },
+      en: { title: asString(sub("en").title), description: asString(sub("en").description) },
+    },
+  };
+}
+
 // 统一入口：校验环境变量 + 动态加载 SDK，返回可用数据库句柄。
 // 用变量承载包名，避免打包器在构建期静态解析（本地未装 @cloudbase/node-sdk 也能构建）。
 export async function getCloudbaseDb(): Promise<CBDb> {
@@ -131,21 +156,25 @@ export async function loadCMSContent(): Promise<{
   projects: Project[];
   profile: Profile;
   links: LinkItem[];
+  settings: Settings;
 }> {
   const db = await getCloudbaseDb();
 
-  const [postsRes, projectsRes, profileRes, linksRes] = (await Promise.all([
+  const [postsRes, projectsRes, profileRes, linksRes, settingsRes] = (await Promise.all([
     db.collection("posts").get(),
     db.collection("projects").get(),
     db.collection("profile").limit(1).get(),
     db.collection("links").get(),
+    db.collection("settings").limit(1).get(),
   ])) as CBResult[];
 
   const profileRow = profileRes.data[0] ?? {};
+  const settingsRow = settingsRes.data[0] ?? {};
   return {
     posts: postsRes.data.map(mapPost),
     projects: projectsRes.data.map(mapProject),
     profile: mapProfile(profileRow),
     links: linksRes.data.map(mapLink),
+    settings: mapSettings(settingsRow),
   };
 }

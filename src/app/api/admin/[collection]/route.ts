@@ -12,7 +12,7 @@ import { adminApiEnabled, readSession, verifySession } from "@/lib/admin-auth";
 export const revalidate = 0;
 
 // 允许访问的集合（与 admin 页侧边栏一致）
-const COLLECTIONS = ["posts", "projects", "profile", "links"];
+const COLLECTIONS = ["posts", "projects", "profile", "links", "settings"];
 
 // 静态导出要求动态段必须枚举参数，且开发态也会校验「请求的 param 是否在列表里」，
 // 所以这里要把真实集合列全（缺一个，访问该集合就会 500）。

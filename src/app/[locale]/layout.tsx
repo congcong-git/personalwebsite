@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Analytics } from "@/components/Analytics";
-import { getPosts } from "@/lib/content";
+import { getPosts, getSettings } from "@/lib/content";
 import type { Locale } from "@/i18n/routing";
 import { buildSearchDocs } from "@/lib/search";
 
@@ -23,11 +23,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Metadata" });
-  const siteName = "xuniw 的技术站";
+  const settings = await getSettings();
+  // SEO 文案优先取后台 settings.seo[locale]，缺省回退 i18n
+  const seo = settings.seo[locale as Locale] ?? { title: "", description: "" };
+  const siteName = settings.siteName || "xuniw 的技术站";
+  const title = seo.title || t("title");
+  const description = seo.description || t("description");
   return {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-    title: { default: t("title"), template: `%s · ${siteName}` },
-    description: t("description"),
+    title: { default: title, template: `%s · ${siteName}` },
+    description,
     alternates: {
       languages: { "zh-CN": "/zh", en: "/en" },
     },
@@ -36,13 +41,13 @@ export async function generateMetadata({
       locale: locale === "en" ? "en_US" : "zh_CN",
       url: `/${locale}`,
       siteName,
-      title: t("title"),
-      description: t("description"),
+      title,
+      description,
     },
     twitter: {
       card: "summary_large_image",
-      title: t("title"),
-      description: t("description"),
+      title,
+      description,
     },
   };
 }
@@ -61,20 +66,40 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
   const messages = await getMessages();
   const posts = await getPosts(locale as Locale);
+  const settings = await getSettings();
   const searchDocs = buildSearchDocs(posts, locale as Locale);
+
+  const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: settings.siteName || "xuniw 的技术站",
+    url: SITE,
+    inLanguage: locale,
+  };
+  const personLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: settings.brand || "xuniw",
+    url: SITE,
+  };
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
-            <Header searchDocs={searchDocs} />
+            <Header searchDocs={searchDocs} brand={settings.brand} />
             <main className="flex-1">
               <div className="mx-auto w-full max-w-5xl px-4 py-10">
                 {children}
               </div>
             </main>
-            <Footer />
+            <Footer
+              brand={settings.brand}
+              footerNote={settings.footerNote}
+              socials={settings.socials}
+            />
           </ThemeProvider>
         </NextIntlClientProvider>
         <Analytics />

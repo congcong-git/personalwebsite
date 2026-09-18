@@ -58,11 +58,32 @@ export type LinkItem = {
   desc: string;
 };
 
+// 站点级可配置项（后台 settings 集合，单条），用于把"写死"的站点名、品牌、
+// 社交链接、关于简介、页脚简介、SEO 文案等交给后台维护。
+export type SocialItem = {
+  type: string; // github / email / twitter / wechat / link 等
+  url: string;
+  label?: string;
+};
+
+export type SeoLocale = { title: string; description: string };
+export type Seo = { zh: SeoLocale; en: SeoLocale };
+
+export type Settings = {
+  siteName: string;
+  brand: string;
+  bio: string; // 关于页顶部简介
+  footerNote: string; // 页脚简介
+  socials: SocialItem[];
+  seo: Seo;
+};
+
 type RawContent = {
   posts: Post[];
   projects: Project[];
   profile: Profile;
   links: LinkItem[];
+  settings: Settings;
 };
 
 // ---------- 本地内容（CMS 未配置时的回退） ----------
@@ -178,9 +199,37 @@ const LOCAL_LINKS: LinkItem[] = [
   { name: "某技术博客", url: "https://example.com", desc: "前端与全栈实践" },
 ];
 
+// 站点级默认值（CMS 未配置时的回退；上线后由 settings 集合接管）
+const LOCAL_SETTINGS: Settings = {
+  siteName: "xuniw 的技术站",
+  brand: "xuniw",
+  bio: "自动化码垛 / 机器人编程工程师。这里记录技术实践、项目复盘与一些思考。",
+  footerNote: "自动化码垛与机器人编程工程师的个人技术站，记录工程实践与思考。",
+  socials: [
+    { type: "github", url: "https://github.com/xuniw", label: "GitHub" },
+    { type: "email", url: "mailto:hello@xuniw.dev", label: "Email" },
+  ],
+  seo: {
+    zh: {
+      title: "xuniw 的技术站",
+      description: "自动化码垛 / 机器人编程工程师的个人技术站：博客、项目与思考。",
+    },
+    en: {
+      title: "xuniw's Tech Blog",
+      description: "Personal tech blog of an automation & robotics engineer.",
+    },
+  },
+};
+
 async function loadLocalContent(): Promise<RawContent> {
   const posts = await loadLocalPosts();
-  return { posts, projects: LOCAL_PROJECTS, profile: LOCAL_PROFILE, links: LOCAL_LINKS };
+  return {
+    posts,
+    projects: LOCAL_PROJECTS,
+    profile: LOCAL_PROFILE,
+    links: LOCAL_LINKS,
+    settings: LOCAL_SETTINGS,
+  };
 }
 
 // ---------- 统一读取（CMS 优先，失败回退本地） ----------
@@ -226,6 +275,10 @@ export async function getProfile(): Promise<Profile> {
 
 export async function getLinks(): Promise<LinkItem[]> {
   return (await loadAll()).links;
+}
+
+export async function getSettings(): Promise<Settings> {
+  return (await loadAll()).settings;
 }
 
 // generateStaticParams 用：返回所有 locale+slug 组合

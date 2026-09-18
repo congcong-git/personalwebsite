@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getProfile } from "@/lib/content";
+import { getProfile, getSettings } from "@/lib/content";
+import type { Locale } from "@/i18n/routing";
 
 export default async function AboutPage({
   params,
@@ -10,11 +11,13 @@ export default async function AboutPage({
   setRequestLocale(locale);
   const t = await getTranslations("About");
   const profile = await getProfile();
+  // 关于页顶部简介来自后台 settings（默认回退本地值），不再写死在 i18n
+  const settings = await getSettings();
 
   return (
     <div className="flex flex-col gap-12">
       <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-      <p className="max-w-2xl leading-8 text-muted">{t("bio")}</p>
+      <p className="max-w-2xl leading-8 text-muted">{settings.bio}</p>
 
       <section className="flex flex-col gap-4">
         <h2 className="section-title">{t("skills")}</h2>

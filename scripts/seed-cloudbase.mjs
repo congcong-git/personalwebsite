@@ -123,6 +123,22 @@ const LINKS = [
   { name: "某技术博客", url: "https://example.com", desc: "前端与全栈实践" },
 ];
 
+// 站点级可配置项（对应后台 settings 集合，单条）
+const SETTINGS = {
+  siteName: "xuniw 的技术站",
+  brand: "xuniw",
+  bio: "自动化码垛 / 机器人编程工程师。这里记录技术实践、项目复盘与一些思考。",
+  footerNote: "自动化码垛与机器人编程工程师的个人技术站，记录工程实践与思考。",
+  socials: [
+    { type: "github", url: "https://github.com/xuniw", label: "GitHub" },
+    { type: "email", url: "mailto:hello@xuniw.dev", label: "Email" },
+  ],
+  seo: {
+    zh: { title: "xuniw 的技术站", description: "自动化码垛 / 机器人编程工程师的个人技术站：博客、项目与思考。" },
+    en: { title: "xuniw's Tech Blog", description: "Personal tech blog of an automation & robotics engineer." },
+  },
+};
+
 // ---------- 逐条 upsert：按 keyField 查，存在则更新、不存在则新增 ----------
 async function upsertCollection(name, docs, keyField) {
   const col = db.collection(name);
@@ -130,7 +146,19 @@ async function upsertCollection(name, docs, keyField) {
   let updated = 0;
   for (const d of docs) {
     const key = d[keyField];
-    const q = key ? await col.where({ [keyField]: key }).limit(1).get() : { data: [] };
+    let q;
+    try {
+      q = key ? await col.where({ [keyField]: key }).limit(1).get() : { data: [] };
+    } catch (e) {
+      const msg = String(e?.code || e?.message || "");
+      if (msg.includes("DATABASE_COLLECTION_NOT_EXIST") || /not exist/i.test(msg)) {
+        console.error(
+          `\n❌ 集合「${name}」在 CloudBase 中不存在。请先在 CloudBase 控制台创建该集合（权限默认「所有用户可读」即可），参考《云开发开通与建集合指南.md》§2，然后重跑本脚本。`
+        );
+        process.exit(1);
+      }
+      throw e;
+    }
     // 去掉 _id：新增时不带、更新时交给 doc(id) 定位
     const rest = { ...clean(d) };
     delete rest._id;
@@ -149,12 +177,13 @@ async function upsertCollection(name, docs, keyField) {
 }
 
 const posts = await readLocalPosts();
-console.log(`本地读取：posts=${posts.length} projects=${PROJECTS.length} profile=1 links=${LINKS.length}`);
+console.log(`本地读取：posts=${posts.length} projects=${PROJECTS.length} profile=1 links=${LINKS.length} settings=1`);
 
 await upsertCollection("posts", posts, "slug");
 await upsertCollection("projects", PROJECTS, "slug");
 await upsertCollection("profile", [PROFILE], "name");
 await upsertCollection("links", LINKS, "name");
+await upsertCollection("settings", [SETTINGS], "siteName");
 
 console.log("\n🎉 灌库完成（已按 slug/name 幂等 upsert）。");
 console.log("下一步：node scripts/verify-cloudbase.mjs 验证；pnpm build 自动从文档库拉取内容。");
