@@ -12,9 +12,10 @@
 ## 1. 本地开发
 
 ```bash
-npm install          # 也可用 pnpm install
+pnpm install         # 推荐：仓库锁文件是 pnpm-lock.yaml（v9.0）
+# 或 npm install（会按 package.json 重新解析版本，不校验锁文件）
 cp .env.example .env.local   # 按需填写（不填也能跑，内容走本地 content/）
-npm run dev
+pnpm dev
 ```
 
 打开 http://localhost:3000 → 自动跳转 `/zh`（英文站 `/en`）。
@@ -23,16 +24,16 @@ npm run dev
 
 | 命令 | 说明 |
 |---|---|
-| `npm run dev` | 本地开发服务器（含调试后台） |
-| `npm run build` | 常规构建（默认，CI 用它做质量闸门） |
-| `npm run build:export` | **部署构建**：静态导出到 `out/`，EdgeOne Pages 用这条 |
-| `npm run lint` | ESLint |
-| `npx tsc --noEmit` | 类型检查 |
+| `pnpm dev` | 本地开发服务器（含调试后台） |
+| `pnpm build` | 常规构建（默认，CI 用它做质量闸门） |
+| `pnpm build:export` | **部署构建**：静态导出到 `out/`，EdgeOne Pages 用这条 |
+| `pnpm lint` | ESLint |
+| `pnpm exec tsc --noEmit` | 类型检查 |
 
 > 为什么要分两种构建：EdgeOne Pages 要求 Next.js 为静态导出模式，而静态导出**不能产出任何服务端接口**。
 > 管理端 API 是动态路由（读 Cookie 鉴权），若强行标成可静态化，开发态的 GET 会被预渲染缓存、鉴权失效。
 > 因此 `build:export` 会在构建期间临时把 `src/app/api/admin` 挪出 `src/app`，构建结束必定还原（见 `scripts/build-export.mjs`）。
-> 日常开发用 `npm run dev` / `npm run build`，不受影响。
+> 日常开发用 `pnpm dev` / `pnpm build`，不受影响。
 
 ## 2. 环境变量
 
@@ -54,7 +55,7 @@ npm run dev
 
 三种方式，任选：
 
-1. **调试后台**（最省事，默认仅本地）：`npm run dev` → `http://localhost:3000/zh/admin` → 输口令
+1. **调试后台**（最省事，默认仅本地）：`pnpm dev` → `http://localhost:3000/zh/admin` → 输口令
 2. **一键播种脚本**：把本地 `content/` 灌入云开发集合（幂等，可反复执行）
    ```bash
    node --env-file=.env.local scripts/seed-cloudbase.mjs
@@ -68,9 +69,16 @@ npm run dev
 
 ## 4. 部署（EdgeOne Pages）
 
-1. 把本仓库推到 GitHub，在 [EdgeOne Pages](https://edgeone.ai) 控制台「导入 Git 仓库」连接它
-2. 框架预设选 **Next.js**；本仓库已带 `edgeone.json`，构建命令 `npm run build:export`、输出目录 `out`、Node 22.11.0 会自动填好
-   - 若你改用 pnpm，把 `installCommand` 改成 `pnpm install`（默认 `npm install`，与 EdgeOne 默认行为一致）
+1. 本地仓库已初始化并完成首次提交。创建空的 GitHub 仓库后关联并推送：
+   ```bash
+   git remote add origin <你的仓库地址>
+   git branch -M main
+   git push -u origin main
+   ```
+   然后在 [EdgeOne Pages](https://edgeone.ai) 控制台「导入 Git 仓库」连接它
+2. 框架预设选 **Next.js**；本仓库已带 `edgeone.json`，安装命令 `pnpm install --frozen-lockfile`、构建命令 `npm run build:export`、输出目录 `out`、Node 22.11.0 会自动填好
+   - `build:export` 内部调的是 Node 脚本，用 `npm run` 包一层即可，不依赖包管理器
+   - EdgeOne 支持 npm 8~10 / pnpm 6~9 / yarn 1；本仓库锁文件 `pnpm-lock.yaml`（v9.0），因此固定走 pnpm
 3. 在控制台「环境变量」里填 `NEXT_PUBLIC_SITE_URL` 与三个 `CLOUDBASE_*`（否则线上内容回退到仓库里的 `content/`）
 4. 保存即触发构建，之后每次 push 自动重新部署
 
