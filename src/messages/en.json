@@ -1,0 +1,64 @@
+{
+  "Metadata": {
+    "title": "xuniw · Tech Portfolio",
+    "description": "Personal tech site of an automation palletizing engineer: blog, projects and about me."
+  },
+  "Nav": {
+    "home": "Home",
+    "blog": "Blog",
+    "projects": "Projects",
+    "about": "About",
+    "links": "Links",
+    "visit": "Visit project"
+  },
+  "Search": {
+    "placeholder": "Search posts…",
+    "noResults": "No matching posts"
+  },
+  "Home": {
+    "heroTitle": "Hi, I'm xuniw",
+    "heroSubtitle": "Automation palletizing / robotics programmer. Tinkering with full-stack and side projects.",
+    "ctaBlog": "Read Blog",
+    "ctaProjects": "View Projects",
+    "latestPosts": "Latest Posts",
+    "featuredProjects": "Featured Projects",
+    "viewAll": "View all"
+  },
+  "About": {
+    "title": "About Me",
+    "bio": "I'm an automation palletizing and robotics programming engineer working daily with three-gripper greedy algorithms, five-flower stacks and Vue loading animations. Off-duty I build Next.js full-stack apps, a venue booking mini-program, and study A-share swing trading frameworks.",
+    "skills": "Skills",
+    "timeline": "Timeline",
+    "resume": "Download Resume PDF",
+    "wechat": "WeChat Official Account",
+    "wechatDesc": "Tech notes and daily retrospectives are also published on my WeChat official account — scan to follow.",
+    "wechatHint": "Scan or long-press the QR code to follow"
+  },
+  "Footer": {
+    "copyright": "© 2026 xuniw. All rights reserved.",
+    "builtWith": "Built with Next.js"
+  },
+  "Theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "Lang": {
+    "switch": "Switch language",
+    "zh": "中文",
+    "en": "English"
+  },
+  "Blog": {
+    "title": "Blog",
+    "allTags": "All tags",
+    "empty": "No posts yet",
+    "prev": "Previous",
+    "next": "Next",
+    "readingTime": "{min} min read",
+    "backToList": "Back to blog",
+    "prevPost": "Previous",
+    "nextPost": "Next",
+    "sourceLink": "Read original",
+    "sourceNote": "Source: {source}"
+  }
+}

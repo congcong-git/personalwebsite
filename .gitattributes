@@ -1,0 +1,18 @@
+# 统一换行符：仓库与工作区均使用 LF，避免 CI / EdgeOne 构建差异
+* text=auto eol=lf
+
+# 二进制资源：禁止换行转换与文本差异
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.svg text eol=lf
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+
+# 锁文件保持原样
+pnpm-lock.yaml -diff linguist-generated=true

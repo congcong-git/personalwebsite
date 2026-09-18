@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+  <!-- 占位二维码图形：部署前请替换为真实公众号二维码图片 -->
+  <g fill="#111827">
+    <rect x="24" y="24" width="64" height="64" rx="6"/>
+    <rect x="36" y="36" width="40" height="40" rx="4" fill="#ffffff"/>
+    <rect x="168" y="24" width="64" height="64" rx="6"/>
+    <rect x="180" y="36" width="40" height="40" rx="4" fill="#ffffff"/>
+    <rect x="24" y="168" width="64" height="64" rx="6"/>
+    <rect x="36" y="180" width="40" height="40" rx="4" fill="#ffffff"/>
+    <rect x="104" y="40" width="12" height="12"/>
+    <rect x="128" y="40" width="12" height="12"/>
+    <rect x="104" y="64" width="12" height="12"/>
+    <rect x="40" y="104" width="12" height="12"/>
+    <rect x="64" y="104" width="12" height="12"/>
+    <rect x="104" y="104" width="12" height="12"/>
+    <rect x="128" y="104" width="12" height="12"/>
+    <rect x="152" y="104" width="12" height="12"/>
+    <rect x="176" y="104" width="12" height="12"/>
+    <rect x="200" y="104" width="12" height="12"/>
+    <rect x="104" y="128" width="12" height="12"/>
+    <rect x="152" y="128" width="12" height="12"/>
+    <rect x="200" y="128" width="12" height="12"/>
+    <rect x="104" y="152" width="12" height="12"/>
+    <rect x="152" y="152" width="12" height="12"/>
+    <rect x="200" y="152" width="12" height="12"/>
+    <rect x="128" y="176" width="12" height="12"/>
+    <rect x="176" y="176" width="12" height="12"/>
+    <rect x="200" y="200" width="12" height="12"/>
+    <rect x="152" y="200" width="12" height="12"/>
+    <rect x="128" y="224" width="12" height="12"/>
+  </g>
+  <text x="128" y="248" font-size="12" text-anchor="middle" fill="#6b7280" font-family="sans-serif">公众号二维码占位</text>
+</svg>

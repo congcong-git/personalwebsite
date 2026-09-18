@@ -1,0 +1,64 @@
+{
+  "Metadata": {
+    "title": "xuniw · 个人技术站",
+    "description": "自动化码垛工程师的个人技术站：技术博客、项目展示与关于我。"
+  },
+  "Nav": {
+    "home": "首页",
+    "blog": "博客",
+    "projects": "项目",
+    "about": "关于",
+    "links": "友链",
+    "visit": "访问项目"
+  },
+  "Search": {
+    "placeholder": "搜索文章…",
+    "noResults": "没有找到相关文章"
+  },
+  "Home": {
+    "heroTitle": "你好，我是 xuniw",
+    "heroSubtitle": "自动化码垛 / 机器人编程工程师，折腾全栈与个人项目。",
+    "ctaBlog": "读博客",
+    "ctaProjects": "看项目",
+    "latestPosts": "最新文章",
+    "featuredProjects": "精选项目",
+    "viewAll": "查看全部"
+  },
+  "About": {
+    "title": "关于我",
+    "bio": "我是一名自动化码垛与机器人编程工程师，日常与三抓手贪心算法、五花垛、Vue 装车动画打交道；业余写 Next.js 全栈、约球吧小程序，也研究 A股短线交易框架。",
+    "skills": "技能栈",
+    "timeline": "经历",
+    "resume": "下载简历 PDF",
+    "wechat": "公众号",
+    "wechatDesc": "技术笔记与日常复盘会同步发布到公众号，欢迎扫码关注。",
+    "wechatHint": "扫码 / 长按识别二维码关注"
+  },
+  "Footer": {
+    "copyright": "© 2026 xuniw. 保留所有权利。",
+    "builtWith": "基于 Next.js 构建"
+  },
+  "Theme": {
+    "toggle": "切换主题",
+    "light": "浅色",
+    "dark": "深色"
+  },
+  "Lang": {
+    "switch": "切换语言",
+    "zh": "中文",
+    "en": "English"
+  },
+  "Blog": {
+    "title": "博客",
+    "allTags": "全部标签",
+    "empty": "暂无文章",
+    "prev": "上一页",
+    "next": "下一页",
+    "readingTime": "{min} 分钟阅读",
+    "backToList": "返回博客列表",
+    "prevPost": "上一篇",
+    "nextPost": "下一篇",
+    "sourceLink": "查看原文",
+    "sourceNote": "来源：{source}"
+  }
+}

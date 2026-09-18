@@ -1,0 +1,41 @@
+name: CI
+
+# 质量闸门：每次 push / PR 都跑 lint + 类型检查 + 生产构建。
+# 仓库建好后立刻生效；部署由 EdgeOne Pages 监听仓库自动触发，无需在此重复部署步骤。
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.11.0"
+
+      - name: 安装依赖
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: 类型检查
+        run: npx tsc --noEmit
+
+      - name: 生产构建（静态导出）
+        # 未配置 CLOUDBASE_* 时会自动回退到 content/ 本地内容，构建同样会通过；
+        # 想让 CI 用线上内容构建，在仓库 Settings → Secrets 里配下面三个变量。
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          CLOUDBASE_ENV_ID: ${{ secrets.CLOUDBASE_ENV_ID }}
+          CLOUDBASE_SECRET_ID: ${{ secrets.CLOUDBASE_SECRET_ID }}
+          CLOUDBASE_SECRET_KEY: ${{ secrets.CLOUDBASE_SECRET_KEY }}
+        run: npm run build
