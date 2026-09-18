@@ -263,7 +263,6 @@ export default function AdminPage() {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed, collection]);
 
   async function login() {
