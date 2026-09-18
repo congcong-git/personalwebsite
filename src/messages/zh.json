@@ -16,7 +16,9 @@
     "noResults": "没有找到相关文章"
   },
   "Home": {
+    "heroTag": "自动化 · 机器人 · 全栈",
     "heroTitle": "你好，我是 xuniw",
+    "heroTitleAccent": "把机械臂写进代码的工程师",
     "heroSubtitle": "自动化码垛 / 机器人编程工程师，折腾全栈与个人项目。",
     "ctaBlog": "读博客",
     "ctaProjects": "看项目",
@@ -36,7 +38,9 @@
   },
   "Footer": {
     "copyright": "© 2026 xuniw. 保留所有权利。",
-    "builtWith": "基于 Next.js 构建"
+    "builtWith": "基于 Next.js 构建",
+    "bio": "自动化码垛工程师的个人技术站，记录技术思考、项目实践与生活复盘。",
+    "stackNote": "Next.js · TypeScript · Tailwind CSS · EdgeOne Pages"
   },
   "Theme": {
     "toggle": "切换主题",

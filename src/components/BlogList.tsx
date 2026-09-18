@@ -59,10 +59,8 @@ export function BlogList({ posts }: { posts: BlogListItem[] }) {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => go({ tag: "", page: 1 })}
-          className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-            !activeTag
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-foreground/70 hover:border-primary/40"
+          className={`tag-pill transition ${
+            !activeTag ? "tag-pill-brand" : "hover:border-primary/40"
           }`}
         >
           {t("allTags")}
@@ -71,10 +69,8 @@ export function BlogList({ posts }: { posts: BlogListItem[] }) {
           <button
             key={tg}
             onClick={() => go({ tag: tg, page: 1 })}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-              activeTag === tg
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-foreground/70 hover:border-primary/40"
+            className={`tag-pill transition ${
+              activeTag === tg ? "tag-pill-brand" : "hover:border-primary/40"
             }`}
           >
             {tg}
@@ -91,21 +87,22 @@ export function BlogList({ posts }: { posts: BlogListItem[] }) {
             <li key={p.slug}>
               <Link
                 href={`/blog/${p.slug}`}
-                className="block rounded-xl border border-border p-5 transition-colors hover:border-primary/40"
+                className="card card-interactive block p-5"
               >
-                <div className="flex items-center gap-3 text-xs text-muted">
+                <div className="flex items-center gap-2 text-xs text-subtle">
                   <span>{p.date}</span>
-                  <span>·</span>
+                  <span className="h-1 w-1 rounded-full bg-border" />
                   <span>{t("readingTime", { min: p.readingTime })}</span>
                 </div>
-                <h2 className="mt-1.5 text-lg font-semibold">{p.title}</h2>
-                <p className="mt-2 text-sm text-muted">{p.excerpt}</p>
+                <h2 className="mt-2 text-lg font-semibold leading-snug">
+                  {p.title}
+                </h2>
+                <p className="mt-2 line-clamp-2 text-sm leading-7 text-muted">
+                  {p.excerpt}
+                </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {p.tags.map((tg) => (
-                    <span
-                      key={tg}
-                      className="rounded-full bg-black/5 px-2 py-0.5 text-xs text-foreground/60 dark:bg-white/10"
-                    >
+                    <span key={tg} className="tag-pill">
                       {tg}
                     </span>
                   ))}
@@ -118,29 +115,21 @@ export function BlogList({ posts }: { posts: BlogListItem[] }) {
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between">
           <button
             onClick={() => go({ page: currentPage - 1 })}
             disabled={currentPage <= 1}
-            className={`rounded-full border border-border px-4 py-1.5 transition-colors ${
-              currentPage <= 1
-                ? "pointer-events-none opacity-40"
-                : "hover:border-primary/40"
-            }`}
+            className="btn btn-ghost px-4 py-1.5 text-sm disabled:pointer-events-none disabled:opacity-40"
           >
             {t("prev")}
           </button>
-          <span className="text-muted">
+          <span className="text-sm text-muted">
             {currentPage} / {totalPages}
           </span>
           <button
             onClick={() => go({ page: currentPage + 1 })}
             disabled={currentPage >= totalPages}
-            className={`rounded-full border border-border px-4 py-1.5 transition-colors ${
-              currentPage >= totalPages
-                ? "pointer-events-none opacity-40"
-                : "hover:border-primary/40"
-            }`}
+            className="btn btn-ghost px-4 py-1.5 text-sm disabled:pointer-events-none disabled:opacity-40"
           >
             {t("next")}
           </button>

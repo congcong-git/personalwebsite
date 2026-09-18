@@ -1,9 +1,11 @@
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
-// 页脚：版权 + 社交入口 + 构建信息
+// 页脚：品牌 + 导航 + 社交入口
 // 注：lucide-react 新版移除了品牌图标（Github 等），故社交图标内联 SVG，避免依赖缺失
 export function Footer() {
   const t = useTranslations("Footer");
+  const tn = useTranslations("Nav");
   const year = new Date().getFullYear();
 
   const socials = [
@@ -42,25 +44,63 @@ export function Footer() {
     },
   ];
 
+  const navItems = [
+    { href: "/", label: tn("home") },
+    { href: "/blog", label: tn("blog") },
+    { href: "/projects", label: tn("projects") },
+    { href: "/about", label: tn("about") },
+    { href: "/links", label: tn("links") },
+  ];
+
   return (
-    <footer className="border-t border-border py-8">
-      <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-4 text-sm text-muted sm:flex-row sm:justify-between">
-        <p>{t("copyright").replace("2026", String(year))}</p>
-        <div className="flex items-center gap-3">
-          {socials.map(({ href, label, icon }) => (
-            <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
-              aria-label={label}
-              className="text-muted transition-colors hover:text-foreground"
+    <footer className="mt-24 border-t border-border">
+      <div className="mx-auto grid max-w-5xl gap-10 px-4 py-12 sm:grid-cols-3">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2 font-semibold">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-[linear-gradient(135deg,var(--brand-from),var(--brand-to))] text-xs font-bold text-white shadow-[0_4px_12px_var(--glow)]">
+              x
+            </span>
+            <span className="gradient-text text-base font-bold">xuniw</span>
+          </div>
+          <p className="max-w-xs text-sm leading-7 text-muted">
+            {t("bio")}
+          </p>
+          <div className="flex items-center gap-3">
+            {socials.map(({ href, label, icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+                aria-label={label}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                {icon}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-semibold text-foreground">{tn("home")}</p>
+          {navItems.map((it) => (
+            <Link
+              key={it.href}
+              href={it.href}
+              className="text-sm text-muted transition-colors hover:text-primary"
             >
-              {icon}
-            </a>
+              {it.label}
+            </Link>
           ))}
         </div>
-        <p className="text-xs">{t("builtWith")}</p>
+
+        <div className="flex flex-col gap-3 text-sm text-muted">
+          <p className="font-semibold text-foreground">{t("builtWith")}</p>
+          <p className="leading-7">{t("stackNote")}</p>
+        </div>
+      </div>
+      <div className="border-t border-border py-5 text-center text-xs text-subtle">
+        {t("copyright").replace("2026", String(year))}
       </div>
     </footer>
   );

@@ -12,7 +12,7 @@ export default async function LinksPage({
   const links = await getLinks();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <h1 className="text-3xl font-bold tracking-tight">{t("links")}</h1>
       <ul className="flex flex-col gap-3">
         {links.map((l) => (
@@ -21,10 +21,15 @@ export default async function LinksPage({
               href={l.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block rounded-xl border border-border p-4 transition-colors hover:border-primary/40"
+              className="card card-interactive group flex items-center justify-between gap-4 p-4"
             >
-              <p className="font-medium">{l.name}</p>
-              <p className="text-sm text-muted">{l.desc}</p>
+              <div className="flex flex-col gap-1">
+                <p className="font-medium">{l.name}</p>
+                <p className="text-sm text-muted">{l.desc}</p>
+              </div>
+              <span className="shrink-0 text-subtle transition-colors group-hover:text-primary">
+                ↗
+              </span>
             </a>
           </li>
         ))}

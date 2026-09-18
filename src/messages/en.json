@@ -16,7 +16,9 @@
     "noResults": "No matching posts"
   },
   "Home": {
+    "heroTag": "Automation · Robotics · Full-stack",
     "heroTitle": "Hi, I'm xuniw",
+    "heroTitleAccent": "the engineer who codes robots",
     "heroSubtitle": "Automation palletizing / robotics programmer. Tinkering with full-stack and side projects.",
     "ctaBlog": "Read Blog",
     "ctaProjects": "View Projects",
@@ -36,7 +38,9 @@
   },
   "Footer": {
     "copyright": "© 2026 xuniw. All rights reserved.",
-    "builtWith": "Built with Next.js"
+    "builtWith": "Built with Next.js",
+    "bio": "Personal tech site of an automation palletizing engineer — notes on engineering, projects and life.",
+    "stackNote": "Next.js · TypeScript · Tailwind CSS · EdgeOne Pages"
   },
   "Theme": {
     "toggle": "Toggle theme",

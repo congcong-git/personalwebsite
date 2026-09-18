@@ -43,32 +43,29 @@ export default async function ProjectDetailPage({
         ← {t("projects")}
       </Link>
 
-      <header className="flex flex-col gap-3 border-b border-border pb-6">
-        <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-        <p className="text-muted">{project.summary}</p>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="rounded-full border border-border px-3 py-1 text-foreground/70">
-            {project.role}
-          </span>
-          {project.tech.map((tg) => (
-            <span
-              key={tg}
-              className="rounded-full bg-black/5 px-2 py-0.5 text-xs text-foreground/60 dark:bg-white/10"
+      <header className="card flex flex-col gap-4 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+          {project.link && (
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
             >
+              {t("visit")}
+            </a>
+          )}
+        </div>
+        <p className="text-muted">{project.summary}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="tag-pill tag-pill-brand">{project.role}</span>
+          {project.tech.map((tg) => (
+            <span key={tg} className="tag-pill">
               {tg}
             </span>
           ))}
         </div>
-        {project.link && (
-          <a
-            href={project.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-fit rounded-full bg-primary px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-          >
-            {t("visit")}
-          </a>
-        )}
       </header>
 
       <p className="text-muted">{project.highlight}</p>

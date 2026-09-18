@@ -42,65 +42,68 @@ export default async function HomePage({
       ></script>
       <div className="flex flex-col gap-16">
       {/* Hero */}
-      <section className="flex flex-col items-start gap-6 py-12">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+      <section className="hero-aura flex flex-col items-start gap-6 rounded-3xl px-6 py-16 sm:px-10">
+        <span className="tag-pill-brand">{t("heroTag")}</span>
+        <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
           {t("heroTitle")}
+          <span className="gradient-text"> {t("heroTitleAccent")}</span>
         </h1>
-        <p className="max-w-2xl text-lg text-muted">{t("heroSubtitle")}</p>
-        <div className="flex gap-3">
-          <Link
-            href="/blog"
-            className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
-          >
+        <p className="max-w-2xl text-lg leading-8 text-muted">
+          {t("heroSubtitle")}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/blog" className="btn btn-primary">
             {t("ctaBlog")}
           </Link>
-          <Link
-            href="/projects"
-            className="rounded-full border border-border px-5 py-2.5 text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-          >
+          <Link href="/projects" className="btn btn-ghost">
             {t("ctaProjects")}
           </Link>
         </div>
       </section>
 
       {/* 最新文章 */}
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">{t("latestPosts")}</h2>
-          <Link href="/blog" className="text-sm text-primary hover:underline">
+          <h2 className="section-title">{t("latestPosts")}</h2>
+          <Link href="/blog" className="link-brand text-sm">
             {t("viewAll")}
           </Link>
         </div>
         <ul className="grid gap-4 sm:grid-cols-3">
           {latest.map((p) => (
-            <li
-              key={p.slug}
-              className="rounded-xl border border-border p-5 transition-colors hover:border-primary/40"
-            >
-              <p className="text-xs text-muted">{p.date}</p>
-              <h3 className="mt-1 font-medium">{p.title}</h3>
-              <p className="mt-2 text-sm text-muted">{p.excerpt}</p>
+            <li key={p.slug}>
+              <Link href={`/blog/${p.slug}`} className="card card-interactive block h-full p-5">
+                <p className="text-xs text-subtle">{p.date}</p>
+                <h3 className="mt-1.5 font-semibold leading-snug">{p.title}</h3>
+                <p className="mt-2 line-clamp-3 text-sm leading-7 text-muted">
+                  {p.excerpt}
+                </p>
+              </Link>
             </li>
           ))}
         </ul>
       </section>
 
       {/* 精选项目 */}
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">{t("featuredProjects")}</h2>
-          <Link href="/projects" className="text-sm text-primary hover:underline">
+          <h2 className="section-title">{t("featuredProjects")}</h2>
+          <Link href="/projects" className="link-brand text-sm">
             {t("viewAll")}
           </Link>
         </div>
         <ul className="grid gap-4 sm:grid-cols-3">
           {featured.map((p) => (
-            <li
-              key={p.slug}
-              className="rounded-xl border border-border p-5 transition-colors hover:border-primary/40"
-            >
-              <h3 className="font-medium">{p.name}</h3>
-              <p className="mt-2 text-sm text-muted">{p.summary}</p>
+            <li key={p.slug}>
+              <Link
+                href={`/projects/${p.slug}`}
+                className="card card-interactive block h-full p-5"
+              >
+                <h3 className="font-semibold leading-snug">{p.name}</h3>
+                <p className="mt-2 line-clamp-3 text-sm leading-7 text-muted">
+                  {p.summary}
+                </p>
+              </Link>
             </li>
           ))}
         </ul>

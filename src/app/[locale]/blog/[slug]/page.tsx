@@ -84,12 +84,12 @@ export default async function BlogPostPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       ></script>
       <article className="flex flex-col gap-8">
-      <Link href="/blog" className="text-sm text-primary hover:underline">
+      <Link href="/blog" className="link-brand text-sm">
         ← {t("backToList")}
       </Link>
 
-      <header className="flex flex-col gap-3 border-b border-border pb-6">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+      <header className="card flex flex-col gap-4 p-6">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-subtle">
           <span>{post.date}</span>
           <span>·</span>
           <span>{t("readingTime", { min: post.readingTime })}</span>
@@ -99,23 +99,22 @@ export default async function BlogPostPage({
                 href={post.source}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary hover:underline"
+                className="tag-pill tag-pill-brand hover:underline"
               >
                 {t("sourceLink")}
               </a>
             ) : (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+              <span className="tag-pill tag-pill-brand">
                 {t("sourceNote", { source: post.source })}
               </span>
             ))}
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">{post.title}</h1>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          {post.title}
+        </h1>
         <div className="flex flex-wrap gap-1.5">
           {post.tags.map((tg) => (
-            <span
-              key={tg}
-              className="rounded-full bg-black/5 px-2 py-0.5 text-xs text-foreground/60 dark:bg-white/10"
-            >
+            <span key={tg} className="tag-pill">
               {tg}
             </span>
           ))}
@@ -125,14 +124,14 @@ export default async function BlogPostPage({
       <Markdown content={post.body} />
 
       {/* 上 / 下篇 */}
-      <nav className="mt-4 grid gap-3 border-t border-border pt-6 sm:grid-cols-2">
+      <nav className="mt-4 grid gap-3 sm:grid-cols-2">
         {prev ? (
           <Link
             href={`/blog/${prev.slug}`}
-            className="rounded-xl border border-border p-4 transition-colors hover:border-primary/40"
+            className="card card-interactive p-4"
           >
-            <p className="text-xs text-muted">{t("prevPost")}</p>
-            <p className="mt-1 font-medium">{prev.title}</p>
+            <p className="text-xs text-subtle">{t("prevPost")}</p>
+            <p className="mt-1 font-medium leading-snug">{prev.title}</p>
           </Link>
         ) : (
           <span />
@@ -140,10 +139,10 @@ export default async function BlogPostPage({
         {next ? (
           <Link
             href={`/blog/${next.slug}`}
-            className="rounded-xl border border-border p-4 text-right transition-colors hover:border-primary/40"
+            className="card card-interactive p-4 text-right"
           >
-            <p className="text-xs text-muted">{t("nextPost")}</p>
-            <p className="mt-1 font-medium">{next.title}</p>
+            <p className="text-xs text-subtle">{t("nextPost")}</p>
+            <p className="mt-1 font-medium leading-snug">{next.title}</p>
           </Link>
         ) : (
           <span />
