@@ -22,9 +22,10 @@ jobs:
           node-version: "22.11.0"
 
       - name: 启用 pnpm
-        # 仓库锁文件为 pnpm-lock.yaml（lockfileVersion 9.0），EdgeOne Pages 支持 pnpm 6~9；
-        # CI 固定到 pnpm 9，保证与线上构建解析出同一份依赖树。
-        run: corepack enable && corepack prepare pnpm@9 --activate
+        # 仓库锁文件为 pnpm-lock.yaml（lockfileVersion 9.0）。
+        # 用 npm 直接安装 pnpm 9，绕过 corepack：Node 22.11.0 自带的 corepack 内置公钥已过期，
+        # 校验新版 pnpm 9.x 签名时会报 “Cannot find matching keyid”，导致 CI 卡在装依赖阶段而无法进入 lint/build。
+        run: npm install -g pnpm@9
 
       - name: 安装依赖
         run: pnpm install --frozen-lockfile

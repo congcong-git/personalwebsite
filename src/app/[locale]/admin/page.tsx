@@ -918,17 +918,43 @@ function TagChip({ label, active, onClick }: { label: string; active: boolean; o
   );
 }
 
-// 把 cloud:// 私有文件 ID 解析为可渲染的签名 URL（管理后台预览用，dev-only 端点）。
-// 普通 http(s)/本地路径原样透传，零额外请求。
+// 把 cloud:// 私有文件 ID 解析为可渲染的签名 URL 字符串（供链接 href 等使用）
+// 非云链接原样返回；云链接异步解析，effect 内仅做异步 setState，避免同步 setState 触发 lint 错误
 function usePreviewSrc(value: string): string {
-  const [resolved, setResolved] = useState(value);
+  const [cloudUrl, setCloudUrl] = useState(value);
   useEffect(() => {
-    if (!value.startsWith("cloud://")) {
-      setResolved(value);
-      return;
-    }
+    if (!value.startsWith("cloud://")) return;
     let alive = true;
     fetch(`/api/admin/file-url?fileID=${encodeURIComponent(value)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { url?: string } | null) => {
+        if (alive && j?.url) setCloudUrl(j.url);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [value]);
+  return value.startsWith("cloud://") ? cloudUrl : value;
+}
+
+// 渲染封面/二维码图片时，自动把 cloud:// 解析为签名 URL（避免私有文件直接渲染失败）
+// 普通 http(s)/本地路径原样透传，零额外请求；仅云链接走异步解析，避免 effect 内同步 setState
+function PreviewImage({ src, className, alt }: { src: string; className?: string; alt: string }) {
+  if (!src) return null;
+  if (!src.startsWith("cloud://")) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt} className={className} />;
+  }
+  return <CloudPreview src={src} className={className} alt={alt} />;
+}
+
+// 仅云链接使用：异步把 cloud:// 私有文件 ID 解析为可渲染的签名 URL（管理后台预览用，dev-only 端点）
+function CloudPreview({ src, className, alt }: { src: string; className?: string; alt: string }) {
+  const [resolved, setResolved] = useState("");
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/file-url?fileID=${encodeURIComponent(src)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((j: { url?: string } | null) => {
         if (alive && j?.url) setResolved(j.url);
@@ -937,13 +963,7 @@ function usePreviewSrc(value: string): string {
     return () => {
       alive = false;
     };
-  }, [value]);
-  return resolved;
-}
-
-// 渲染封面/二维码图片时，自动把 cloud:// 解析为签名 URL（避免私有文件直接渲染失败）
-function PreviewImage({ src, className, alt }: { src: string; className?: string; alt: string }) {
-  const resolved = usePreviewSrc(src);
+  }, [src]);
   if (!resolved) return null;
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={resolved} alt={alt} className={className} />;
