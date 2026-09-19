@@ -1,4 +1,4 @@
-# xuniw 的个人技术站
+# 许你我的聪的个人技术站
 
 自动化码垛 / 机器人编程工程师的个人站点：中英双语博客、项目展示、关于页与简历下载。
 内容存腾讯云**云开发文档型数据库**，由本仓库的调试后台或控制台维护；站点以**静态导出**方式部署到 **EdgeOne Pages**（免费、国内快）。
@@ -57,7 +57,7 @@ pnpm dev
 | `ADMIN_SESSION_SECRET` | 会话签名盐（可选） | 只用口令派生密钥 |
 | `ADMIN_ALLOW_PRODUCTION` | 是否在生产开放后台接口（默认否） | 后台仅本地可用 |
 | `NEXT_PUBLIC_GISCUS_*` | Giscus 评论 | 评论区不渲染（不报错） |
-| `NEXT_PUBLIC_UMAMI_URL` / `NEXT_PUBLIC_UMAMI_ID` | Umami 统计 | 统计脚本不注入（不报错） |
+| `NEXT_PUBLIC_51LA_ID` / `NEXT_PUBLIC_51LA_CK` | 51.la 统计 | 统计脚本不注入（不报错） |
 
 > ★ 评论与统计属外部凭证，需你自行申请；代码已就绪，未配置时静默跳过，不阻塞构建与上线。
 
@@ -105,7 +105,7 @@ pnpm dev
 | 页脚技术栈说明、版权年份 | i18n `Footer` 命名空间 |
 | 主题与配色（深浅色变量、品牌渐变） | `globals.css` 的 CSS 变量（`.dark` 下的 `--brand-*`、`--background` 等）+ `next-themes` 配置 |
 | 双语路由（zh/en）、语言切换项 | `src/i18n/routing.ts`、`navigation.ts` |
-| 评论 / 统计接入 | Giscus / Umami，靠环境变量（`NEXT_PUBLIC_GISCUS_*`、`NEXT_PUBLIC_UMAMI_*`）开启，非后台 |
+| 评论 / 统计接入 | Giscus / 51.la，靠环境变量（`NEXT_PUBLIC_GISCUS_*`、`NEXT_PUBLIC_51LA_*`）开启，非后台 |
 | 本地兜底内容（仅在未配置 CloudBase 时生效） | `content/posts/*.md`（文章）、`src/lib/content.ts` 内 `LOCAL_PROJECTS` / `LOCAL_PROFILE` / `LOCAL_LINKS` / `LOCAL_SETTINGS` 常量（项目/个人/友链/站点设置） |
 
 > 一句话总结：能"在后台点几下就改"的只有 A 表里的五张集合（含 `settings`）；站点的名字、品牌、社交链接、关于页简介、页脚简介、SEO 文案现在都走 `settings` 集合，其余导航文案、配色、双语、评论/统计仍属 B 表（代码/i18n/环境变量）。
@@ -140,7 +140,7 @@ pnpm dev
 | SEO | `generateMetadata`、OG/Twitter 卡片、动态 OG 图、JSON-LD（WebSite/Person/Article）、`sitemap.xml`、`robots.txt` |
 | RSS | `/feed.xml`（RSS 2.0） |
 | 评论 | Giscus（配置后自动启用） |
-| 统计 | Umami（配置后自动启用） |
+| 统计 | 51.la（配置后自动启用） |
 | 后台 | 调试后台：集合 CRUD、字段表单、Markdown 编辑器 + 图片上传；会话鉴权（sha256 + HttpOnly Cookie） |
 
 ## 6. 目录结构

@@ -6,6 +6,7 @@ import { getAllPostSlugs, getPost, getPosts } from "@/lib/content";
 import type { Locale } from "@/i18n/routing";
 import Markdown from "@/components/Markdown";
 import { Giscus } from "@/components/Giscus";
+import { JsonLd } from "@/components/JsonLd";
 
 type Params = { locale: string; slug: string };
 
@@ -79,10 +80,7 @@ export default async function BlogPostPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      ></script>
+      <JsonLd id="jsonld-article" data={jsonLd} />
       <article className="flex flex-col gap-8">
       <Link href="/blog" className="link-brand text-sm">
         ← {t("backToList")}

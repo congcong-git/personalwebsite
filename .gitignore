@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# 但保留模板文件，供 README 的「复制 .env.example」使用
+!.env.example
 
 # 后台上传的图片（dev-only，由 Next.js 静态托管，不入库）
 /public/uploads/*

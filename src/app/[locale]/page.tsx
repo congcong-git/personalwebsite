@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getPosts, getProjects } from "@/lib/content";
 import type { Locale } from "@/i18n/routing";
+import { JsonLd } from "@/components/JsonLd";
 
 export default async function HomePage({
   params,
@@ -32,14 +33,8 @@ export default async function HomePage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      ></script>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(personLd) }}
-      ></script>
+      <JsonLd id="jsonld-website" data={jsonLd} />
+      <JsonLd id="jsonld-person" data={personLd} />
       <div className="flex flex-col gap-16">
       {/* Hero */}
       <section className="hero-aura flex flex-col items-start gap-6 rounded-3xl px-6 py-16 sm:px-10">
