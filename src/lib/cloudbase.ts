@@ -12,6 +12,10 @@ export function isCMSEnabled(): boolean {
   );
 }
 
+// 私有文件签发临时访问 URL 的有效期（秒），设为 1 年上限。
+// 静态导出在构建期由 loadCMSContent 重新签发，因此私有文件（不开公开读）也能长期可用。
+export const CLOUD_SIGN_MAX_AGE = 365 * 24 * 3600;
+
 // CloudBase 文档数据库返回结构：{ data: [...] }
 type CBResult = { data: Record<string, unknown>[] };
 
@@ -27,9 +31,25 @@ export type CBCollection = {
   add: (doc: Record<string, unknown>) => Promise<{ id: string }>;
 };
 export type CBDb = { collection: (name: string) => CBCollection };
+
+// CloudBase 实例最小类型面：仅描述本项目用到的方法（storage + database），
+// 规避直接依赖 @cloudbase/node-sdk 的完整类型，也避免打包器在构建期静态解析该包。
+export interface CBApp {
+  database(): CBDb;
+  uploadFile(opts: {
+    cloudPath: string;
+    fileContent: Buffer | Uint8Array;
+  }): Promise<{ fileID: string }>;
+  getTempFileURL(opts: {
+    fileList: Array<string | { fileID: string; maxAge?: number }>;
+  }): Promise<{
+    fileList: Array<{ fileID: string; tempFileURL: string; code?: string }>;
+  }>;
+}
+
 type CBInit = (
   opts: { env: string; secretId: string; secretKey: string }
-) => { database: () => CBDb };
+) => CBApp;
 
 function asString(v: unknown, fallback = ""): string {
   return typeof v === "string" ? v : fallback;
@@ -129,9 +149,9 @@ function mapSettings(row: Record<string, unknown>): Settings {
   };
 }
 
-// 统一入口：校验环境变量 + 动态加载 SDK，返回可用数据库句柄。
+// 统一入口：校验环境变量 + 动态加载 SDK，返回已初始化的 CloudBase 实例。
 // 用变量承载包名，避免打包器在构建期静态解析（本地未装 @cloudbase/node-sdk 也能构建）。
-export async function getCloudbaseDb(): Promise<CBDb> {
+export async function getCloudbaseApp(): Promise<CBApp> {
   const env = process.env.CLOUDBASE_ENV_ID;
   const secretId = process.env.CLOUDBASE_SECRET_ID;
   const secretKey = process.env.CLOUDBASE_SECRET_KEY;
@@ -148,7 +168,11 @@ export async function getCloudbaseDb(): Promise<CBDb> {
     throw new Error("@cloudbase/node-sdk 加载失败：未找到 init 导出");
   }
   const app = init({ env, secretId, secretKey });
-  return app.database();
+  return app as unknown as CBApp;
+}
+
+export async function getCloudbaseDb(): Promise<CBDb> {
+  return (await getCloudbaseApp()).database();
 }
 
 export async function loadCMSContent(): Promise<{
@@ -158,7 +182,8 @@ export async function loadCMSContent(): Promise<{
   links: LinkItem[];
   settings: Settings;
 }> {
-  const db = await getCloudbaseDb();
+  const app = await getCloudbaseApp();
+  const db = app.database();
 
   const [postsRes, projectsRes, profileRes, linksRes, settingsRes] = (await Promise.all([
     db.collection("posts").get(),
@@ -170,11 +195,58 @@ export async function loadCMSContent(): Promise<{
 
   const profileRow = profileRes.data[0] ?? {};
   const settingsRow = settingsRes.data[0] ?? {};
-  return {
+  const content = {
     posts: postsRes.data.map(mapPost),
     projects: projectsRes.data.map(mapProject),
     profile: mapProfile(profileRow),
     links: linksRes.data.map(mapLink),
     settings: mapSettings(settingsRow),
   };
+
+  // 私有存储兜底：把库里以 cloud:// 开头的文件 ID 解析为带 1 年签名的私有直链。
+  // 文件保持私有（不开公开读）；仅在存在 cloud:// 值时才发起一次批量签发。
+  await resolveCloudUrls(content);
+  return content;
+}
+
+// cloud:// 文件 ID 前缀：CloudBase 存储返回的 fileID 形如
+// cloud://<env>.<suffix>/uploads/xxx.png，需解析为带签名的访问 URL。
+const CLOUD_PREFIX = "cloud://";
+
+// 把 content 中仍以 cloud:// 开头的 cover / resumeUrl / wechat.qr 解析为带 1 年签名的私有直链。
+// 保留完整签名查询串（不 strip）：私有存储无公开读，签名 URL 才是唯一可访问方式；
+// 静态导出在构建期重新签发，故链接始终在有效期内。
+async function resolveCloudUrls(
+  content: Awaited<ReturnType<typeof loadCMSContent>>
+): Promise<void> {
+  const refs: { fileID: string; apply: (url: string) => void }[] = [];
+  const push = (v: string | undefined, apply: (url: string) => void) => {
+    if (typeof v === "string" && v.startsWith(CLOUD_PREFIX)) refs.push({ fileID: v, apply });
+  };
+
+  content.posts.forEach((p) => push(p.cover, (u) => (p.cover = u)));
+  content.projects.forEach((p) => push(p.cover, (u) => (p.cover = u)));
+  push(content.profile.resumeUrl, (u) => (content.profile.resumeUrl = u));
+  push(content.profile.wechat?.qr, (u) => {
+    if (content.profile.wechat) content.profile.wechat.qr = u;
+  });
+
+  if (refs.length === 0) return;
+  try {
+    const app = await getCloudbaseApp();
+    const { fileList } = await app.getTempFileURL({
+      fileList: refs.map((r) => ({ fileID: r.fileID, maxAge: CLOUD_SIGN_MAX_AGE })),
+    });
+    const map = new Map<string, string>();
+    for (const f of fileList ?? []) {
+      // 保留完整签名 URL（含 ?sign=...）：私有存储靠它才能访问，不 strip
+      if (f.tempFileURL) map.set(f.fileID, f.tempFileURL);
+    }
+    for (const r of refs) {
+      const url = map.get(r.fileID);
+      if (url) r.apply(url);
+    }
+  } catch (e) {
+    console.warn("[content] cloud:// 链接解析失败，保留原始 fileID：", e);
+  }
 }

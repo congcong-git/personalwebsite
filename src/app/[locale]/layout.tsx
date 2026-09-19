@@ -86,6 +86,10 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* 提前与 Giscus 建立连接，缩短评论框外部脚本/iframe 的加载握手时间 */}
+        <link rel="preconnect" href="https://giscus.app" crossOrigin="anonymous" />
+      </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>

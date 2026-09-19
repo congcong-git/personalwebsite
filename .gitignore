@@ -35,8 +35,8 @@ yarn-error.log*
 # 但保留模板文件，供 README 的「复制 .env.example」使用
 !.env.example
 
-# 后台上传的图片（dev-only，由 Next.js 静态托管，不入库）
-/public/uploads/*
+# 后台上传的文件（简历 / 二维码 / 图片等）：需随仓库提交以纳入静态构建产物部署
+# 注意：被忽略的文件不会出现在线上构建产物中，故上传目录不再忽略
 !/public/uploads/.gitkeep
 
 # vercel
@@ -45,3 +45,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.codebuddy

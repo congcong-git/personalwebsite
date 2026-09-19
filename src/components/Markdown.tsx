@@ -22,6 +22,12 @@ export default function Markdown({ content }: { content: string }) {
               </a>
             );
           },
+          // 跳过空 src，避免 <img src=""> 触发浏览器整页重下告警
+          img: ({ node, src, alt, ...props }) => {
+            if (!src || typeof src !== "string" || src.trim() === "") return null;
+            // eslint-disable-next-line @next/next/no-img-element
+            return <img src={src} alt={alt ?? ""} {...props} />;
+          },
         }}
       >
         {content}

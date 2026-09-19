@@ -4,7 +4,7 @@
 // 沿用 /api/admin/[collection] 的 CRUD 接口，仅 development 可用。
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "@/i18n/navigation";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import {
@@ -18,6 +18,7 @@ import {
   Trash2,
   ArrowLeft,
   LogOut,
+  Pencil,
   Save,
   Settings,
   type LucideIcon,
@@ -69,6 +70,8 @@ interface FieldDef {
   itemFields?: FieldDef[];
   placeholder?: string;
   help?: string;
+  // 为 url 类型附加「上传文件」按钮，选完自动回填返回的 URL
+  upload?: boolean;
 }
 const FIELDS: Record<Collection, FieldDef[]> = {
   posts: [
@@ -78,7 +81,7 @@ const FIELDS: Record<Collection, FieldDef[]> = {
     { key: "lang", label: "语言", type: "select", options: ["zh", "en"] },
     { key: "tags", label: "标签", type: "tags" },
     { key: "excerpt", label: "摘要", type: "textarea", placeholder: "列表/分享卡片显示的摘要" },
-    { key: "cover", label: "封面图 URL", type: "url" },
+    { key: "cover", label: "封面图 URL", type: "url", upload: true },
     {
       key: "source",
       label: "来源",
@@ -96,19 +99,19 @@ const FIELDS: Record<Collection, FieldDef[]> = {
     { key: "role", label: "角色", type: "text" },
     { key: "link", label: "链接", type: "url" },
     { key: "highlight", label: "亮点", type: "textarea" },
-    { key: "cover", label: "封面图 URL", type: "url" },
+    { key: "cover", label: "封面图 URL", type: "url", upload: true },
     { key: "body", label: "正文 (Markdown)", type: "markdown" },
   ],
   profile: [
     { key: "name", label: "名称", type: "text", required: true },
-    { key: "resumeUrl", label: "简历 URL", type: "url" },
+    { key: "resumeUrl", label: "简历 URL", type: "url", upload: true },
     {
       key: "wechat",
       label: "公众号",
       type: "object",
       itemFields: [
         { key: "name", label: "公众号名称", type: "text" },
-        { key: "qr", label: "二维码图片路径", type: "url", placeholder: "/wechat-official-qr.svg" },
+        { key: "qr", label: "二维码图片路径", type: "url", upload: true, placeholder: "/wechat-official-qr.svg" },
         { key: "desc", label: "一句话介绍", type: "textarea" },
       ],
     },
@@ -171,6 +174,15 @@ const FIELDS: Record<Collection, FieldDef[]> = {
     },
   ],
 };
+
+// 这些字段类型在「无正文预览」的全宽表单里跨两列，避免被压得太窄
+const WIDE_FIELD_TYPES = new Set<FieldDef["type"]>([
+  "textarea",
+  "markdown",
+  "tags",
+  "object",
+  "objectArray",
+]);
 
 // CMS 文档是 schema-less 的，值可能是字符串/数组/嵌套对象，统一用 unknown 承载，
 // 在具体消费处再做窄化，避免 any 满天飞。
@@ -274,6 +286,10 @@ export default function AdminPage() {
     state: "idle",
     msg: "",
   });
+  // 单条集合（个人资料/站点设置）查看优先：只读态展示、点「编辑」才可改
+  const [readOnly, setReadOnly] = useState(false);
+  const modeRef = useRef<"idle" | "edit" | "create">(mode);
+  modeRef.current = mode;
 
   // 刷新后用现有会话 Cookie 恢复登录态（Cookie 为 httpOnly，前端读不到内容）
   useEffect(() => {
@@ -317,6 +333,7 @@ export default function AdminPage() {
     setSelectedId(null);
     setSearch("");
     setActiveTag(null);
+    setReadOnly(false);
     setCollection(c);
   }
 
@@ -332,12 +349,33 @@ export default function AdminPage() {
         return;
       }
       const j = await res.json();
-      if (alive) setRecords(j.data ?? []);
+      if (!alive) return;
+      const data = j.data ?? [];
+      setRecords(data);
+      // 单条集合：进入即打开为只读查看态（无记录则进入创建）
+      if (META[collection].single && modeRef.current === "idle") {
+        if (data.length > 0) {
+          startEdit(data[0]);
+          setReadOnly(true);
+        } else {
+          startCreate();
+          setReadOnly(false);
+        }
+      }
     })();
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed, collection]);
+
+  // 保存成功 / 失败后自动隐藏浮层提示，给出明确反馈又不长期占位
+  useEffect(() => {
+    if (save.state === "ok" || save.state === "error") {
+      const t = setTimeout(() => setSave({ state: "idle", msg: "" }), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [save.state, save.msg]);
 
   async function login() {
     if (!password || loggingIn) return;
@@ -374,12 +412,15 @@ export default function AdminPage() {
     setSelectedId(null);
     setForm(initForm(null, FIELDS[collection]));
     setSave({ state: "idle", msg: "" });
+    setReadOnly(false);
   }
   function startEdit(r: Doc) {
     setMode("edit");
     setSelectedId(String(r._id ?? null));
     setForm(initForm(r, FIELDS[collection]));
     setSave({ state: "idle", msg: "" });
+    // 列表项点击后进入只读查看，点「编辑」才可变可编辑（所有集合通用）
+    setReadOnly(true);
   }
 
   async function saveDoc() {
@@ -402,13 +443,27 @@ export default function AdminPage() {
       if (j.error) setSave({ state: "error", msg: "保存失败：" + j.error });
       else {
         setSave({ state: "ok", msg: "已保存" });
-        if (!selectedId) setSelectedId(j.id);
-        setMode("edit");
         load();
+        if (META[collection].single) {
+          // 单条集合：保存后回到只读查看态，停留在表单
+          if (!selectedId) setSelectedId(j.id);
+          setMode("edit");
+          setReadOnly(true);
+        } else {
+          // 多集合：保存后回到列表视图
+          setMode("idle");
+          setSelectedId(null);
+        }
       }
     } catch (e) {
       setSave({ state: "error", msg: "保存失败：" + String(e) });
     }
+  }
+
+  function cancelEdit() {
+    const r = records.find((x) => String(x._id) === selectedId);
+    if (r) startEdit(r);
+    setReadOnly(true);
   }
 
   async function del(r: Doc) {
@@ -518,9 +573,25 @@ export default function AdminPage() {
   const pvCover = String(form.cover ?? "");
   const pvDate = String(form.date ?? "");
   const pvBody = String(form.body ?? "");
+  // 仅当集合含 Markdown 正文时才显示右栏预览（个人资料/站点设置/友链无正文，右栏无意义）
+  const hasBodyPreview = FIELDS[collection].some((f) => f.type === "markdown");
 
   return (
     <div className="admin-bg fixed inset-0 z-50 flex text-foreground">
+      {/* 保存状态浮层提示：明确告知保存进行中 / 成功 / 失败 */}
+      {save.state !== "idle" && (
+        <div
+          className={`fixed left-1/2 top-20 z-[60] -translate-x-1/2 rounded-lg px-4 py-2 text-sm font-medium shadow-lg ${
+            save.state === "ok"
+              ? "bg-green-600 text-white"
+              : save.state === "error"
+                ? "bg-red-600 text-white"
+                : "bg-foreground/90 text-background"
+          }`}
+        >
+          {save.state === "saving" ? "保存中…" : save.msg}
+        </div>
+      )}
       {/* 左侧集合导航（桌面） */}
       <aside className="glass hidden w-64 shrink-0 flex-col border-r border-border md:flex lg:w-72">
         <div className="flex h-16 items-center gap-3 border-b border-border px-5">
@@ -578,7 +649,7 @@ export default function AdminPage() {
             />
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            {mode !== "idle" && (
+            {mode !== "idle" && !isSingle && (
               <button
                 onClick={() => switchCollection(collection)}
                 className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
@@ -586,7 +657,7 @@ export default function AdminPage() {
                 <ArrowLeft className="h-4 w-4" /> 列表
               </button>
             )}
-            {(!isSingle || (isSingle && records.length === 0)) && (
+            {!isSingle && (
               <button onClick={startCreate} className="btn btn-primary">
                 <Plus className="h-4 w-4" /> 新建
               </button>
@@ -658,8 +729,7 @@ export default function AdminPage() {
                       >
                         <div className="relative aspect-[16/10] overflow-hidden bg-elevated">
                           {r.cover ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <PreviewImage
                               src={String(r.cover)}
                               alt=""
                               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -707,47 +777,87 @@ export default function AdminPage() {
             </div>
           ) : (
             /* 编辑器：左表单 | 右实时预览 */
-            <div className="grid h-full grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
+            <div className={`grid h-full grid-cols-1 divide-y divide-border ${hasBodyPreview ? "md:grid-cols-2 md:divide-x md:divide-y-0" : ""}`}>
               {/* 左：表单 */}
               <div className="overflow-y-auto p-4 md:p-6">
                 <div className="mb-5 flex items-center gap-3">
-                  <button onClick={() => switchCollection(collection)} className="icon-btn" aria-label="返回列表">
-                    <ArrowLeft className="h-4 w-4" />
-                  </button>
+                  {!isSingle && (
+                    <button onClick={() => switchCollection(collection)} className="icon-btn" aria-label="返回列表">
+                      <ArrowLeft className="h-4 w-4" />
+                    </button>
+                  )}
                   <div className="min-w-0">
                     <div className="text-xs text-subtle">
-                      {META[collection].label} · {mode === "create" ? "新建" : "编辑"}
+                      {META[collection].label} · {readOnly ? "查看" : mode === "create" ? "新建" : "编辑"}
                     </div>
                     <div className="truncate text-sm font-semibold">
                       {titleOf(collection, form) || (mode === "create" ? "新条目" : "—")}
                     </div>
                   </div>
-                  <button
-                    onClick={saveDoc}
-                    disabled={save.state === "saving"}
-                    className="btn btn-primary ml-auto"
-                  >
-                    <Save className="h-4 w-4" />
-                    {save.state === "saving" ? "保存中…" : "保存"}
-                  </button>
+                  <div className="ml-auto flex items-center gap-2">
+                    {readOnly ? (
+                      <button onClick={() => setReadOnly(false)} className="btn btn-primary">
+                        <Pencil className="h-4 w-4" /> 编辑
+                      </button>
+                    ) : (
+                      <>
+                        {!readOnly && mode === "edit" && (
+                          <button onClick={cancelEdit} className="btn btn-ghost">
+                            取消
+                          </button>
+                        )}
+                        <button
+                          onClick={saveDoc}
+                          disabled={save.state === "saving"}
+                          className="btn btn-primary"
+                        >
+                          <Save className="h-4 w-4" />
+                          {save.state === "saving" ? "保存中…" : "保存"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-5">
-                  {FIELDS[collection].map((f) => (
-                    <FieldRow
-                      key={f.key}
-                      def={f}
-                      value={form[f.key]}
-                      onChange={(v) => setForm({ ...form, [f.key]: v })}
-                    />
-                  ))}
-                </div>
+                {!hasBodyPreview ? (
+                  // 无正文预览的集合（个人资料/站点设置/友链）：卡片 + 响应式两列网格，宽字段跨整行
+                  <div className="mx-auto max-w-4xl rounded-xl border border-border bg-surface/40 p-5 sm:p-6">
+                    <fieldset
+                      disabled={readOnly}
+                      className="grid grid-cols-1 gap-x-5 gap-y-5 border-0 p-0 m-0 min-w-0 sm:grid-cols-2"
+                    >
+                      {FIELDS[collection].map((f) => (
+                        <div
+                          key={f.key}
+                          className={WIDE_FIELD_TYPES.has(f.type) ? "sm:col-span-2 min-w-0" : "min-w-0"}
+                        >
+                          <FieldRow
+                            def={f}
+                            value={form[f.key]}
+                            onChange={(v) => setForm({ ...form, [f.key]: v })}
+                          />
+                        </div>
+                      ))}
+                    </fieldset>
+                  </div>
+                ) : (
+                  <fieldset disabled={readOnly} className="space-y-5 border-0 p-0 m-0 min-w-0">
+                    {FIELDS[collection].map((f) => (
+                      <FieldRow
+                        key={f.key}
+                        def={f}
+                        value={form[f.key]}
+                        onChange={(v) => setForm({ ...form, [f.key]: v })}
+                      />
+                    ))}
+                  </fieldset>
+                )}
               </div>
-              {/* 右：实时预览 */}
+              {/* 右：实时预览（仅含 Markdown 正文的集合显示） */}
+              {hasBodyPreview && (
               <div className="hidden overflow-y-auto bg-surface/40 md:block">
                 <div className="mx-auto max-w-2xl p-6 md:p-8">
                   {pvCover && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <PreviewImage
                       src={pvCover}
                       alt=""
                       className="mb-5 w-full rounded-xl border border-border object-cover"
@@ -767,12 +877,17 @@ export default function AdminPage() {
                   {pvSummary && <p className="mt-3 text-muted">{pvSummary}</p>}
                   <hr className="my-5 border-border" />
                   <div className="markdown-body">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeHighlight]}
+                      components={MARKDOWN_COMPONENTS}
+                    >
                       {pvBody || "*（正文为空）*"}
                     </ReactMarkdown>
                   </div>
                 </div>
               </div>
+              )}
             </div>
           )}
         </div>
@@ -803,6 +918,47 @@ function TagChip({ label, active, onClick }: { label: string; active: boolean; o
   );
 }
 
+// 把 cloud:// 私有文件 ID 解析为可渲染的签名 URL（管理后台预览用，dev-only 端点）。
+// 普通 http(s)/本地路径原样透传，零额外请求。
+function usePreviewSrc(value: string): string {
+  const [resolved, setResolved] = useState(value);
+  useEffect(() => {
+    if (!value.startsWith("cloud://")) {
+      setResolved(value);
+      return;
+    }
+    let alive = true;
+    fetch(`/api/admin/file-url?fileID=${encodeURIComponent(value)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { url?: string } | null) => {
+        if (alive && j?.url) setResolved(j.url);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [value]);
+  return resolved;
+}
+
+// 渲染封面/二维码图片时，自动把 cloud:// 解析为签名 URL（避免私有文件直接渲染失败）
+function PreviewImage({ src, className, alt }: { src: string; className?: string; alt: string }) {
+  const resolved = usePreviewSrc(src);
+  if (!resolved) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={resolved} alt={alt} className={className} />;
+}
+
+// 渲染 Markdown 中的图片时，跳过空 src（避免 <img src=""> 触发浏览器整页重下告警）
+const MARKDOWN_COMPONENTS: Components = {
+  img({ src, alt, ...props }) {
+    const s = typeof src === "string" ? src : "";
+    if (!s.trim()) return null;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={s} alt={alt ?? ""} {...props} />;
+  },
+};
+
 function FieldRow({
   def,
   value,
@@ -814,6 +970,8 @@ function FieldRow({
 }) {
   // 各输入控件要的是具体类型，这里统一窄化一次
   const asText = typeof value === "string" ? value : value == null ? "" : String(value);
+  // 私有云存储文件（cloud://）解析为可渲染的签名 URL，普通路径原样
+  const previewSrc = usePreviewSrc(asText);
   const asList = Array.isArray(value) ? (value as string[]) : [];
   const asRows = Array.isArray(value) ? (value as Doc[]) : [];
   const asObject = value && typeof value === "object" && !Array.isArray(value) ? (value as Doc) : {};
@@ -888,12 +1046,52 @@ function FieldRow({
       </div>
     );
   }
-  // text / date / url
+  if (def.type === "url") {
+    return (
+      <div>
+        {label}
+        <div className="flex items-center gap-2">
+          <input
+            type="url"
+            value={asText}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={def.placeholder}
+            className={`${baseInput} flex-1`}
+          />
+          {def.upload && (
+            <UploadButton onUploaded={(u) => onChange(u)} accept="image/*,application/pdf" />
+          )}
+        </div>
+        {def.upload && asText && (
+          <div className="mt-1.5">
+            {/\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(asText) ? (
+              <PreviewImage
+                src={asText}
+                alt=""
+                className="h-20 w-20 rounded-md border border-border object-contain"
+              />
+            ) : (
+              <a
+                href={previewSrc}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-primary hover:underline"
+              >
+                查看已上传文件
+              </a>
+            )}
+          </div>
+        )}
+        {def.help && <p className="mt-1 text-xs text-muted">{def.help}</p>}
+      </div>
+    );
+  }
+  // text / date
   return (
     <div>
       {label}
       <input
-        type={def.type === "date" ? "date" : def.type === "url" ? "url" : "text"}
+        type={def.type === "date" ? "date" : "text"}
         value={asText}
         onChange={(e) => onChange(e.target.value)}
         placeholder={def.placeholder}
@@ -901,6 +1099,46 @@ function FieldRow({
       />
       {def.help && <p className="mt-1 text-xs text-muted">{def.help}</p>}
     </div>
+  );
+}
+
+// 通用文件上传按钮：上传到 /api/admin/upload，成功后把返回 URL 交给 onChange
+const UPLOAD_BTN =
+  "shrink-0 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-border-strong hover:bg-[color-mix(in_srgb,var(--foreground)_7%,transparent)] hover:text-foreground disabled:opacity-50";
+function UploadButton({
+  onUploaded,
+  accept,
+}: {
+  onUploaded: (url: string) => void;
+  accept: string;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  async function onUpload(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const j = await res.json();
+      if (j.error) alert("上传失败：" + j.error);
+      else onUploaded(j.url as string);
+    } catch (err) {
+      alert("上传失败：" + String(err));
+    } finally {
+      setBusy(false);
+      if (e.target) e.target.value = "";
+    }
+  }
+  return (
+    <>
+      <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className={UPLOAD_BTN}>
+        {busy ? "上传中…" : "上传文件"}
+      </button>
+      <input ref={fileRef} type="file" accept={accept} className="hidden" onChange={onUpload} />
+    </>
   );
 }
 
@@ -951,7 +1189,7 @@ function MarkdownEditor({
         alert("上传失败：" + j.error);
       } else {
         const alt = f.name.replace(/\.[^.]+$/, "");
-        insertAtCursor(`![${alt}](${j.url})`);
+        insertAtCursor(`![${alt}](${j.preview || j.url})`);
       }
     } catch (err) {
       alert("上传失败：" + String(err));
@@ -1010,7 +1248,11 @@ function MarkdownEditor({
       <div className="mt-3 md:hidden">
         <div className="mb-1 text-xs text-muted">实时预览</div>
         <div className="markdown-body rounded-md border border-border p-4">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+            components={MARKDOWN_COMPONENTS}
+          >
             {value || "*（空）*"}
           </ReactMarkdown>
         </div>

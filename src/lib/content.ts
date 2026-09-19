@@ -236,7 +236,9 @@ async function loadLocalContent(): Promise<RawContent> {
 let cache: RawContent | null = null;
 
 async function loadAll(): Promise<RawContent> {
-  if (cache) return cache;
+  // 生产（静态导出）只在构建期读取一次，用缓存避免重复拉取云开发；
+  // 开发态每次重新拉取，使后台的修改刷新页面即可生效（否则模块级缓存会一直返回旧值）。
+  if (cache && process.env.NODE_ENV === "production") return cache;
   if (isCMSEnabled()) {
     try {
       cache = await loadCMSContent();
