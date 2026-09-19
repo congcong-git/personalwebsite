@@ -13,7 +13,7 @@ export function Analytics() {
     <Script
       id="LA_COLLECT"
       src="//sdk.51.la/js-sdk-pro.min.js"
-      charset="UTF-8"
+      charSet="UTF-8"
       strategy="afterInteractive"
       onLoad={() => {
         const w = window as unknown as {
