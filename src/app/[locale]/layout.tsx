@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Analytics } from "@/components/Analytics";
-import { getPosts, getSettings } from "@/lib/content";
+import { getPosts, getSettings, localeText } from "@/lib/content";
 import type { Locale } from "@/i18n/routing";
 import { buildSearchDocs } from "@/lib/search";
 
@@ -26,7 +26,7 @@ export async function generateMetadata({
   const settings = await getSettings();
   // SEO 文案优先取后台 settings.seo[locale]，缺省回退 i18n
   const seo = settings.seo[locale as Locale] ?? { title: "", description: "" };
-  const siteName = settings.siteName || "xuniw 的技术站";
+  const siteName = localeText(settings.siteName, locale as Locale) || "xuniw 的技术站";
   const title = seo.title || t("title");
   const description = seo.description || t("description");
   return {
@@ -73,41 +73,35 @@ export default async function LocaleLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: settings.siteName || "xuniw 的技术站",
+    name: localeText(settings.siteName, locale as Locale) || "xuniw 的技术站",
     url: SITE,
     inLanguage: locale,
   };
   const personLd = {
     "@context": "https://schema.org",
     "@type": "Person",
-    name: settings.brand || "xuniw",
+    name: localeText(settings.brand, locale as Locale) || "xuniw",
     url: SITE,
   };
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <head>
-        {/* 提前与 Giscus 建立连接，缩短评论框外部脚本/iframe 的加载握手时间 */}
-        <link rel="preconnect" href="https://giscus.app" crossOrigin="anonymous" />
-      </head>
-      <body className="flex min-h-screen flex-col bg-background text-foreground">
-        <NextIntlClientProvider messages={messages}>
-          <ThemeProvider>
-            <Header searchDocs={searchDocs} brand={settings.brand} />
-            <main className="flex-1">
-              <div className="mx-auto w-full max-w-5xl px-4 py-10">
-                {children}
-              </div>
-            </main>
-            <Footer
-              brand={settings.brand}
-              footerNote={settings.footerNote}
-              socials={settings.socials}
-            />
-          </ThemeProvider>
-        </NextIntlClientProvider>
-        <Analytics />
-      </body>
-    </html>
+    <>
+      <NextIntlClientProvider messages={messages}>
+        <ThemeProvider>
+          <Header searchDocs={searchDocs} brand={localeText(settings.brand, locale as Locale)} />
+          <main className="flex-1">
+            <div className="mx-auto w-full max-w-5xl px-4 py-10">
+              {children}
+            </div>
+          </main>
+          <Footer
+            brand={localeText(settings.brand, locale as Locale)}
+            footerNote={localeText(settings.footerNote, locale as Locale)}
+            socials={settings.socials}
+          />
+        </ThemeProvider>
+      </NextIntlClientProvider>
+      <Analytics />
+    </>
   );
 }

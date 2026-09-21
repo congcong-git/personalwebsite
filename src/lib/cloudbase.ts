@@ -2,7 +2,7 @@
 // 仅当配置了 CLOUDBASE_ENV_ID / SECRET_ID / SECRET_KEY 时启用。
 // 使用动态 import，本地未安装 @cloudbase/node-sdk 也不影响构建（require 只在启用时触发）。
 import type { Locale } from "@/i18n/routing";
-import type { LinkItem, Post, Profile, Project, Settings } from "./content";
+import type { LinkItem, LocaleText, Post, Profile, Project, Settings } from "./content";
 
 export function isCMSEnabled(): boolean {
   return Boolean(
@@ -26,6 +26,7 @@ export type CBCollection = {
   where: (query: Record<string, unknown>) => CBCollection;
   doc: (id: string) => {
     update: (doc: Record<string, unknown>) => Promise<unknown>;
+    set: (doc: Record<string, unknown>) => Promise<unknown>;
     remove: () => Promise<unknown>;
   };
   add: (doc: Record<string, unknown>) => Promise<{ id: string }>;
@@ -58,6 +59,20 @@ function asArray(v: unknown): string[] {
   return Array.isArray(v) ? (v as unknown[]).filter((x) => typeof x === "string") as string[] : [];
 }
 
+// 将单语字符串或 {zh,en} 对象规整为 LocaleText；
+// 旧的单语 CMS 数据整体作为中文、英文留空，由后台保存时 TMT 自动补全
+function asLocale(v: unknown, fallback = ""): LocaleText {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const o = v as Record<string, unknown>;
+    return {
+      zh: typeof o.zh === "string" ? o.zh : fallback,
+      en: typeof o.en === "string" ? o.en : "",
+    };
+  }
+  const s = typeof v === "string" ? v : fallback;
+  return { zh: s, en: "" };
+}
+
 function mapPost(row: Record<string, unknown>): Post {
   const body = asString(row.body);
   return {
@@ -84,14 +99,14 @@ function mapPost(row: Record<string, unknown>): Post {
 function mapProject(row: Record<string, unknown>): Project {
   return {
     slug: asString(row.slug),
-    name: asString(row.name),
-    summary: asString(row.summary),
+    name: asLocale(row.name),
+    summary: asLocale(row.summary),
     tech: asArray(row.tech),
-    role: asString(row.role),
+    role: asLocale(row.role),
     link: typeof row.link === "string" ? row.link : undefined,
-    highlight: asString(row.highlight),
+    highlight: asLocale(row.highlight),
     cover: typeof row.cover === "string" ? row.cover : undefined,
-    body: typeof row.body === "string" ? row.body : undefined,
+    body: row.body != null ? asLocale(row.body) : undefined,
   };
 }
 
@@ -102,7 +117,7 @@ function mapProfile(row: Record<string, unknown>): Profile {
     ? {
         name: typeof wechatRow.name === "string" ? wechatRow.name : undefined,
         qr: typeof wechatRow.qr === "string" ? wechatRow.qr : undefined,
-        desc: typeof wechatRow.desc === "string" ? wechatRow.desc : undefined,
+        desc: asLocale(wechatRow.desc),
       }
     : undefined;
   return {
@@ -113,8 +128,8 @@ function mapProfile(row: Record<string, unknown>): Profile {
     timeline: Array.isArray(row.timeline)
       ? (row.timeline as Record<string, unknown>[]).map((t) => ({
           year: asString(t.year),
-          title: asString(t.title),
-          desc: asString(t.desc),
+          title: asLocale(t.title),
+          desc: asLocale(t.desc),
         }))
       : [],
   };
@@ -133,10 +148,15 @@ function mapSettings(row: Record<string, unknown>): Settings {
       : {};
   const socialsRow = Array.isArray(row.socials) ? (row.socials as Record<string, unknown>[]) : [];
   return {
-    siteName: asString(row.siteName, "xuniw 的技术站"),
-    brand: asString(row.brand, "xuniw"),
-    bio: asString(row.bio),
-    footerNote: asString(row.footerNote),
+    siteName: asLocale(row.siteName, "xuniw 的技术站"),
+    brand: asLocale(row.brand, "xuniw"),
+    bio: asLocale(row.bio),
+    footerNote: asLocale(row.footerNote),
+    // 首页 Hero 文案：库里未配置时为空，渲染层回退 i18n 文案
+    heroTag: asLocale(row.heroTag),
+    heroTitle: asLocale(row.heroTitle),
+    heroTitleAccent: asLocale(row.heroTitleAccent),
+    heroSubtitle: asLocale(row.heroSubtitle),
     socials: socialsRow.map((s) => ({
       type: asString(s.type),
       url: asString(s.url),

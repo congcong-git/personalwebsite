@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getProfile, getSettings } from "@/lib/content";
+import { getProfile, getSettings, localeText } from "@/lib/content";
 import type { Locale } from "@/i18n/routing";
 
 export default async function AboutPage({
@@ -17,7 +17,7 @@ export default async function AboutPage({
   return (
     <div className="flex flex-col gap-12">
       <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-      <p className="max-w-2xl leading-8 text-muted">{settings.bio}</p>
+      <p className="max-w-2xl leading-8 text-muted">{localeText(settings.bio, locale as Locale)}</p>
 
       <section className="flex flex-col gap-4">
         <h2 className="section-title">{t("skills")}</h2>
@@ -36,8 +36,8 @@ export default async function AboutPage({
           {profile.timeline.map((item) => (
             <li key={item.year} className="card flex flex-col gap-1 p-4">
               <span className="tag-pill tag-pill-brand w-fit">{item.year}</span>
-              <p className="font-medium">{item.title}</p>
-              <p className="text-sm leading-7 text-muted">{item.desc}</p>
+              <p className="font-medium">{localeText(item.title, locale as Locale)}</p>
+              <p className="text-sm leading-7 text-muted">{localeText(item.desc, locale as Locale)}</p>
             </li>
           ))}
         </ol>
@@ -62,7 +62,7 @@ export default async function AboutPage({
             <div className="flex flex-col gap-2">
               {profile.wechat.name && <p className="font-medium">{profile.wechat.name}</p>}
               <p className="text-sm leading-7 text-muted">
-                {profile.wechat.desc || t("wechatDesc")}
+                {localeText(profile.wechat?.desc, locale as Locale) || t("wechatDesc")}
               </p>
               <p className="text-xs text-muted">{t("wechatHint")}</p>
             </div>

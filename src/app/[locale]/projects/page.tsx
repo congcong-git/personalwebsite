@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { getProjects } from "@/lib/content";
+import type { Locale } from "@/i18n/routing";
+import { getProjects, localeText } from "@/lib/content";
 
 export default async function ProjectsPage({
   params,
@@ -23,9 +24,9 @@ export default async function ProjectsPage({
               href={`/projects/${p.slug}`}
               className="card card-interactive block h-full p-5"
             >
-              <h2 className="font-semibold leading-snug">{p.name}</h2>
-              <p className="mt-2 text-sm leading-7 text-muted">{p.summary}</p>
-              <p className="mt-3 text-xs leading-6 text-subtle">{p.highlight}</p>
+              <h2 className="font-semibold leading-snug">{localeText(p.name, locale as Locale)}</h2>
+              <p className="mt-2 text-sm leading-7 text-muted">{localeText(p.summary, locale as Locale)}</p>
+              <p className="mt-3 text-xs leading-6 text-subtle">{localeText(p.highlight, locale as Locale)}</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {p.tech.map((tg) => (
                   <span key={tg} className="tag-pill">

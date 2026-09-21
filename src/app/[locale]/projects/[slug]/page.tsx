@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { getAllProjectSlugs, getProject } from "@/lib/content";
+import type { Locale } from "@/i18n/routing";
+import { getAllProjectSlugs, getProject, localeText } from "@/lib/content";
 import Markdown from "@/components/Markdown";
 
 type Params = { locale: string; slug: string };
@@ -19,10 +20,13 @@ export async function generateMetadata({
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const project = await getProject(slug);
   if (!project) return {};
-  return { title: project.name, description: project.summary };
+  return {
+    title: localeText(project.name, locale as Locale),
+    description: localeText(project.summary, locale as Locale),
+  };
 }
 
 export default async function ProjectDetailPage({
@@ -45,7 +49,7 @@ export default async function ProjectDetailPage({
 
       <header className="card flex flex-col gap-4 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{localeText(project.name, locale as Locale)}</h1>
           {project.link && (
             <a
               href={project.link}
@@ -57,9 +61,9 @@ export default async function ProjectDetailPage({
             </a>
           )}
         </div>
-        <p className="text-muted">{project.summary}</p>
+        <p className="text-muted">{localeText(project.summary, locale as Locale)}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="tag-pill tag-pill-brand">{project.role}</span>
+          <span className="tag-pill tag-pill-brand">{localeText(project.role, locale as Locale)}</span>
           {project.tech.map((tg) => (
             <span key={tg} className="tag-pill">
               {tg}
@@ -68,9 +72,9 @@ export default async function ProjectDetailPage({
         </div>
       </header>
 
-      <p className="text-muted">{project.highlight}</p>
+      <p className="text-muted">{localeText(project.highlight, locale as Locale)}</p>
 
-      {project.body && <Markdown content={project.body} />}
+      {project.body && <Markdown content={localeText(project.body, locale as Locale)} />}
     </article>
   );
 }

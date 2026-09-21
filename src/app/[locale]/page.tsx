@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { getPosts, getProjects } from "@/lib/content";
+import { getPosts, getProjects, getSettings, localeText } from "@/lib/content";
 import type { Locale } from "@/i18n/routing";
 import { JsonLd } from "@/components/JsonLd";
 
@@ -12,6 +12,15 @@ export default async function HomePage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Home");
+
+  // Hero 文案优先取后台 settings，留空回退 i18n 文案
+  const settings = await getSettings();
+  const heroTag = localeText(settings.heroTag, locale as Locale) || t("heroTag");
+  const heroTitle = localeText(settings.heroTitle, locale as Locale) || t("heroTitle");
+  const heroAccent =
+    localeText(settings.heroTitleAccent, locale as Locale) || t("heroTitleAccent");
+  const heroSubtitle =
+    localeText(settings.heroSubtitle, locale as Locale) || t("heroSubtitle");
 
   const latest = (await getPosts(locale as Locale)).slice(0, 3);
   const featured = (await getProjects()).slice(0, 3);
@@ -38,13 +47,13 @@ export default async function HomePage({
       <div className="flex flex-col gap-16">
       {/* Hero */}
       <section className="hero-aura flex flex-col items-start gap-6 rounded-3xl px-6 py-16 sm:px-10">
-        <span className="tag-pill-brand">{t("heroTag")}</span>
+        <span className="tag-pill-brand">{heroTag}</span>
         <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-          {t("heroTitle")}
-          <span className="gradient-text"> {t("heroTitleAccent")}</span>
+          {heroTitle}
+          <span className="gradient-text"> {heroAccent}</span>
         </h1>
         <p className="max-w-2xl text-lg leading-8 text-muted">
-          {t("heroSubtitle")}
+          {heroSubtitle}
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/blog" className="btn btn-primary">
@@ -94,9 +103,9 @@ export default async function HomePage({
                 href={`/projects/${p.slug}`}
                 className="card card-interactive block h-full p-5"
               >
-                <h3 className="font-semibold leading-snug">{p.name}</h3>
+                <h3 className="font-semibold leading-snug">{localeText(p.name, locale as Locale)}</h3>
                 <p className="mt-2 line-clamp-3 text-sm leading-7 text-muted">
-                  {p.summary}
+                  {localeText(p.summary, locale as Locale)}
                 </p>
               </Link>
             </li>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/ThemeProvider";
 
 // Giscus 评论（按官方方式在客户端动态注入 script）
 // 环境变量未配置时静默不渲染，不阻塞页面；配置后即自动启用
@@ -11,7 +11,7 @@ const CATEGORY = process.env.NEXT_PUBLIC_GISCUS_CATEGORY || "Announcements";
 const CATEGORY_ID = process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID;
 const LANG = process.env.NEXT_PUBLIC_GISCUS_LANG || "zh-CN";
 
-// Giscus 内置主题：跟随站点 next-themes 的实际明暗，而非系统配色
+// Giscus 内置主题：跟随站点主题 Provider 的实际明暗，而非系统配色
 function giscusTheme(resolved?: string) {
   return resolved === "dark" ? "dark" : "light";
 }

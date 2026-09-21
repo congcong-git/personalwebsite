@@ -70,15 +70,16 @@ interface FieldDef {
   itemFields?: FieldDef[];
   placeholder?: string;
   help?: string;
+  // 新建文档时该字段的默认值（select 等用，如 lang 默认 zh）
+  value?: string;
   // 为 url 类型附加「上传文件」按钮，选完自动回填返回的 URL
   upload?: boolean;
 }
 const FIELDS: Record<Collection, FieldDef[]> = {
   posts: [
-    { key: "slug", label: "Slug", type: "text", required: true, placeholder: "three-gripper-greedy" },
     { key: "title", label: "标题", type: "text", required: true },
     { key: "date", label: "日期", type: "date" },
-    { key: "lang", label: "语言", type: "select", options: ["zh", "en"] },
+    { key: "lang", label: "语言", type: "select", options: ["zh", "en"], value: "zh" },
     { key: "tags", label: "标签", type: "tags" },
     { key: "excerpt", label: "摘要", type: "textarea", placeholder: "列表/分享卡片显示的摘要" },
     { key: "cover", label: "封面图 URL", type: "url", upload: true },
@@ -92,15 +93,55 @@ const FIELDS: Record<Collection, FieldDef[]> = {
     { key: "body", label: "正文 (Markdown)", type: "markdown", required: true },
   ],
   projects: [
-    { key: "slug", label: "Slug", type: "text", required: true },
-    { key: "name", label: "名称", type: "text", required: true },
-    { key: "summary", label: "简介", type: "textarea" },
+    {
+      key: "name",
+      label: "名称",
+      type: "object",
+      required: true,
+      itemFields: [
+        { key: "zh", label: "中文", type: "text" },
+        { key: "en", label: "English", type: "text" },
+      ],
+    },
+    {
+      key: "summary",
+      label: "简介",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "textarea" },
+        { key: "en", label: "English", type: "textarea" },
+      ],
+    },
     { key: "tech", label: "技术栈", type: "tags" },
-    { key: "role", label: "角色", type: "text" },
+    {
+      key: "role",
+      label: "角色",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "text" },
+        { key: "en", label: "English", type: "text" },
+      ],
+    },
     { key: "link", label: "链接", type: "url" },
-    { key: "highlight", label: "亮点", type: "textarea" },
+    {
+      key: "highlight",
+      label: "亮点",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "textarea" },
+        { key: "en", label: "English", type: "textarea" },
+      ],
+    },
     { key: "cover", label: "封面图 URL", type: "url", upload: true },
-    { key: "body", label: "正文 (Markdown)", type: "markdown" },
+    {
+      key: "body",
+      label: "正文 (Markdown)",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "markdown" },
+        { key: "en", label: "English", type: "markdown" },
+      ],
+    },
   ],
   profile: [
     { key: "name", label: "名称", type: "text", required: true },
@@ -112,7 +153,15 @@ const FIELDS: Record<Collection, FieldDef[]> = {
       itemFields: [
         { key: "name", label: "公众号名称", type: "text" },
         { key: "qr", label: "二维码图片路径", type: "url", upload: true, placeholder: "/wechat-official-qr.svg" },
-        { key: "desc", label: "一句话介绍", type: "textarea" },
+        {
+          key: "desc",
+          label: "一句话介绍",
+          type: "object",
+          itemFields: [
+            { key: "zh", label: "中文", type: "textarea" },
+            { key: "en", label: "English", type: "textarea" },
+          ],
+        },
       ],
     },
     { key: "skills", label: "技能", type: "tags" },
@@ -122,8 +171,24 @@ const FIELDS: Record<Collection, FieldDef[]> = {
       type: "objectArray",
       itemFields: [
         { key: "year", label: "年份", type: "text" },
-        { key: "title", label: "标题", type: "text" },
-        { key: "desc", label: "描述", type: "textarea" },
+        {
+          key: "title",
+          label: "标题",
+          type: "object",
+          itemFields: [
+            { key: "zh", label: "中文", type: "text" },
+            { key: "en", label: "English", type: "text" },
+          ],
+        },
+        {
+          key: "desc",
+          label: "描述",
+          type: "object",
+          itemFields: [
+            { key: "zh", label: "中文", type: "textarea" },
+            { key: "en", label: "English", type: "textarea" },
+          ],
+        },
       ],
     },
   ],
@@ -133,10 +198,79 @@ const FIELDS: Record<Collection, FieldDef[]> = {
     { key: "desc", label: "描述", type: "textarea" },
   ],
   settings: [
-    { key: "siteName", label: "站点名称", type: "text", required: true, placeholder: "xuniw 的技术站" },
-    { key: "brand", label: "品牌字标", type: "text", placeholder: "xuniw" },
-    { key: "bio", label: "关于页简介", type: "textarea" },
-    { key: "footerNote", label: "页脚简介", type: "textarea" },
+    {
+      key: "siteName",
+      label: "站点名称",
+      type: "object",
+      required: true,
+      itemFields: [
+        { key: "zh", label: "中文", type: "text", placeholder: "xuniw 的技术站" },
+        { key: "en", label: "English", type: "text" },
+      ],
+    },
+    {
+      key: "brand",
+      label: "品牌字标",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "text", placeholder: "xuniw" },
+        { key: "en", label: "English", type: "text" },
+      ],
+    },
+    {
+      key: "bio",
+      label: "关于页简介",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "textarea" },
+        { key: "en", label: "English", type: "textarea" },
+      ],
+    },
+    {
+      key: "heroTag",
+      label: "首页 Hero · 标签",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "text", placeholder: "自动化 · 机器人 · 全栈" },
+        { key: "en", label: "English", type: "text", placeholder: "Automation · Robotics · Full-stack" },
+      ],
+    },
+    {
+      key: "heroTitle",
+      label: "首页 Hero · 主标题",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "text", placeholder: "你好，我是聪聪" },
+        { key: "en", label: "English", type: "text", placeholder: "Hi, I'm congcong" },
+      ],
+    },
+    {
+      key: "heroTitleAccent",
+      label: "首页 Hero · 渐变高亮后缀",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "text", placeholder: "一个自动化码垛工程师" },
+        { key: "en", label: "English", type: "text", placeholder: "the engineer who codes robots" },
+      ],
+    },
+    {
+      key: "heroSubtitle",
+      label: "首页 Hero · 副标题",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "textarea", placeholder: "自动化码垛 / 机器人编程工程师，折腾全栈与个人项目。" },
+        { key: "en", label: "English", type: "textarea" },
+      ],
+    },
+    {
+      key: "footerNote",
+      label: "页脚简介",
+      type: "object",
+      itemFields: [
+        { key: "zh", label: "中文", type: "textarea" },
+        { key: "en", label: "English", type: "textarea" },
+      ],
+    },
     {
       key: "socials",
       label: "社交链接",
@@ -188,14 +322,23 @@ const WIDE_FIELD_TYPES = new Set<FieldDef["type"]>([
 // 在具体消费处再做窄化，避免 any 满天飞。
 type Doc = Record<string, unknown>;
 
+// 从「字符串」或「{zh,en}」双语值中取展示文本（优先中文），用于后台列表/预览
+function textOf(v: unknown): string {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const o = v as Record<string, unknown>;
+    return typeof o.zh === "string" && o.zh ? o.zh : typeof o.en === "string" ? o.en : "";
+  }
+  return typeof v === "string" ? v : "";
+}
+
 function titleOf(c: Collection, r: Doc): string {
-  if (c === "settings") return String(r.siteName ?? META.settings.label);
-  return String(r.title ?? r.name ?? r._id ?? "(无标题)");
+  if (c === "settings") return textOf(r.siteName) || META.settings.label;
+  return textOf(r.title ?? r.name ?? r._id) || "(无标题)";
 }
 function summaryOf(c: Collection, r: Doc): string {
-  if (c === "posts") return String(r.excerpt ?? "");
-  if (c === "projects") return String(r.summary ?? r.highlight ?? "");
-  if (c === "links") return String(r.desc ?? "");
+  if (c === "posts") return textOf(r.excerpt);
+  if (c === "projects") return textOf(r.summary ?? r.highlight);
+  if (c === "links") return textOf(r.desc);
   if (c === "profile") return Array.isArray(r.skills) ? r.skills.join("、") : "";
   return "";
 }
@@ -211,8 +354,14 @@ function initForm(rec: Doc | null, fields: FieldDef[]): Doc {
     const v = rec ? rec[f.key] : undefined;
     if (f.type === "tags" || f.type === "objectArray") form[f.key] = Array.isArray(v) ? v : [];
     else if (f.type === "object")
-      form[f.key] = v && typeof v === "object" && !Array.isArray(v) ? { ...(v as Doc) } : {};
-    else form[f.key] = v === undefined || v === null ? "" : v;
+      // 旧的单语 CMS 数据（字符串）加载时包成 {zh}，避免首次打开表单清空已有值
+      form[f.key] =
+        v && typeof v === "object" && !Array.isArray(v)
+          ? { ...(v as Doc) }
+          : typeof v === "string"
+            ? { zh: v }
+            : {};
+    else form[f.key] = v === undefined || v === null ? (f.value ?? "") : v;
   }
   return form;
 }
@@ -260,12 +409,12 @@ function validate(form: Doc, fields: FieldDef[]): string[] {
 
 // 可搜索文本（排除正文等大字段，避免一切命中）
 function searchableText(c: Collection, r: Doc): string {
-  const parts: string[] = [String(r.title ?? r.name ?? ""), String(r.slug ?? "")];
+  const parts: string[] = [textOf(r.title ?? r.name), String(r.slug ?? "")];
   const f = META[c].tagField;
   if (f && Array.isArray(r[f])) parts.push((r[f] as string[]).join(" "));
-  if (c === "posts") parts.push(String(r.excerpt ?? ""));
-  if (c === "projects") parts.push(String(r.summary ?? ""), String(r.highlight ?? ""));
-  if (c === "links") parts.push(String(r.desc ?? ""), String(r.url ?? ""));
+  if (c === "posts") parts.push(textOf(r.excerpt));
+  if (c === "projects") parts.push(textOf(r.summary), textOf(r.highlight));
+  if (c === "links") parts.push(textOf(r.desc), String(r.url ?? ""));
   return parts.join(" ").toLowerCase();
 }
 
@@ -432,6 +581,16 @@ export default function AdminPage() {
     }
     const doc = buildDoc(form, fields);
     if (selectedId) doc._id = selectedId;
+    // 博客 / 项目不再暴露 slug 输入：新建时留空，由服务端按标题/名称生成拼音 slug；
+    // 编辑时保留原 slug（若是旧中文 slug 也会被服务端规整为拼音），避免改标题后旧链接失效
+    if (collection === "posts" || collection === "projects") {
+      if (!selectedId) {
+        doc.slug = "";
+      } else {
+        const rec = records.find((x) => String(x._id) === selectedId);
+        doc.slug = typeof rec?.slug === "string" ? rec.slug : "";
+      }
+    }
     setSave({ state: "saving", msg: "保存中…" });
     try {
       const res = await fetch(`/api/admin/${collection}`, {
@@ -567,12 +726,12 @@ export default function AdminPage() {
   }
 
   // 实时预览用的派生值（编辑器右栏）
-  const pvTitle = String(form.title ?? form.name ?? "");
+  const pvTitle = textOf(form.title ?? form.name);
   const pvSummary = summaryOf(collection, form);
   const pvTags = tagsOf(collection, form);
   const pvCover = String(form.cover ?? "");
   const pvDate = String(form.date ?? "");
-  const pvBody = String(form.body ?? "");
+  const pvBody = textOf(form.body);
   // 仅当集合含 Markdown 正文时才显示右栏预览（个人资料/站点设置/友链无正文，右栏无意义）
   const hasBodyPreview = FIELDS[collection].some((f) => f.type === "markdown");
 

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 暗色用 class 策略（配合 next-themes 在 <html> 上加 .dark） */
+/* 暗色用 class 策略（配合主题 Provider 在 <html> 上加 .dark） */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* =========================================================

@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { routing } from "@/i18n/routing";
-import { getSettings } from "@/lib/content";
+import type { Locale } from "@/i18n/routing";
+import { getSettings, localeText } from "@/lib/content";
 
 // 语言级默认 OG 图（1200x630）：SSG 阶段生成静态 PNG，供各语言页 openGraph 兜底
 // 放在 [locale] 下，匹配 next-intl middleware 对无扩展名路径的语言前缀重写（/opengraph-image -> /zh/opengraph-image）
@@ -17,7 +18,10 @@ export function generateStaticParams() {
 export default async function Image({ params }: { params: { locale: string } }) {
   // 站点名来自后台 settings（默认 "xuniw 的技术站"），不再写死
   const settings = await getSettings();
-  const siteName = settings.siteName || "xuniw 的技术站";
+  const siteName = localeText(settings.siteName, params.locale as Locale) || "xuniw 的技术站";
+  // Hero 标签来自后台 settings（默认回退写死的「自动化 · 机器人 · 全栈」）
+  const heroTag =
+    localeText(settings.heroTag, params.locale as Locale) || "自动化 · 机器人 · 全栈";
   return new ImageResponse(
     (
       <div
@@ -37,7 +41,7 @@ export default async function Image({ params }: { params: { locale: string } }) 
           {siteName}
         </div>
         <div style={{ fontSize: 34, opacity: 0.85, marginTop: 24 }}>
-          自动化 · 机器人 · 全栈
+          {heroTag}
         </div>
       </div>
     ),

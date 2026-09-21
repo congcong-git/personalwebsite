@@ -28,7 +28,6 @@
   },
   "About": {
     "title": "About Me",
-    "bio": "I'm an automation palletizing and robotics programming engineer working daily with three-gripper greedy algorithms, five-flower stacks and Vue loading animations. Off-duty I build Next.js full-stack apps, a venue booking mini-program, and study A-share swing trading frameworks.",
     "skills": "Skills",
     "timeline": "Timeline",
     "resume": "Download Resume PDF",
@@ -39,7 +38,6 @@
   "Footer": {
     "copyright": "© 2026 xuniw. All rights reserved.",
     "builtWith": "Built with Next.js",
-    "bio": "Personal tech site of an automation palletizing engineer — notes on engineering, projects and life.",
     "stackNote": "Next.js · TypeScript · Tailwind CSS · EdgeOne Pages"
   },
   "Theme": {

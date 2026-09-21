@@ -1,6 +1,6 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun, Monitor } from "lucide-react";
 
 // 明暗主题切换按钮（客户端，避免 SSR 闪烁）

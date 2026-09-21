@@ -23,20 +23,29 @@ export type Post = {
 
 export type Project = {
   slug: string;
-  name: string;
-  summary: string;
+  name: LocaleText;
+  summary: LocaleText;
   tech: string[];
-  role: string;
+  role: LocaleText;
   link?: string;
-  highlight: string;
+  highlight: LocaleText;
   cover?: string;
-  body?: string; // Markdown 详情正文（可选）
+  body?: LocaleText; // Markdown 详情正文（可选）
 };
+
+// 双语文本：按语言分别存中文/英文，渲染时按当前 locale 取并回退中文
+export type LocaleText = { zh: string; en: string };
+
+// 按当前语言取双语文本，缺失时回退中文；v 为 undefined 时返回空串
+export function localeText(v: LocaleText | undefined, locale: Locale): string {
+  if (!v) return "";
+  return v[locale] || v.zh || "";
+}
 
 export type TimelineItem = {
   year: string;
-  title: string;
-  desc: string;
+  title: LocaleText;
+  desc: LocaleText;
 };
 
 export type Profile = {
@@ -48,7 +57,7 @@ export type Profile = {
   wechat?: {
     name?: string; // 公众号名称
     qr?: string; // 二维码图片路径
-    desc?: string; // 一句话介绍（可选，缺省用 i18n 文案）
+    desc?: LocaleText; // 一句话介绍（可选，缺省用 i18n 文案）
   };
 };
 
@@ -70,10 +79,14 @@ export type SeoLocale = { title: string; description: string };
 export type Seo = { zh: SeoLocale; en: SeoLocale };
 
 export type Settings = {
-  siteName: string;
-  brand: string;
-  bio: string; // 关于页顶部简介
-  footerNote: string; // 页脚简介
+  siteName: LocaleText;
+  brand: LocaleText;
+  bio: LocaleText; // 关于页顶部简介
+  footerNote: LocaleText; // 页脚简介
+  heroTag: LocaleText; // 首页 Hero 标签（如「自动化 · 机器人 · 全栈」）
+  heroTitle: LocaleText; // 首页 Hero 主标题（如「你好，我是聪聪」）
+  heroTitleAccent: LocaleText; // 首页 Hero 渐变高亮后缀
+  heroSubtitle: LocaleText; // 首页 Hero 副标题
   socials: SocialItem[];
   seo: Seo;
 };
@@ -137,34 +150,37 @@ async function loadLocalPosts(): Promise<Post[]> {
 }
 
 // 项目 / 关于 / 友链：结构化本地数据（CMS 上线后由 collections 接管）
+// 双语字段用 lt() 包裹，英文先留空，由后台保存时 TMT 自动补全；本地无 CMS 时英文回退中文
+const lt = (zh: string): LocaleText => ({ zh, en: "" });
+
 const LOCAL_PROJECTS: Project[] = [
   {
     slug: "palletizing",
-    name: "三抓手码垛程序",
-    summary: "自动化码垛核心逻辑，贪心算法解决五花垛分层放置。",
+    name: lt("三抓手码垛程序"),
+    summary: lt("自动化码垛核心逻辑，贪心算法解决五花垛分层放置。"),
     tech: ["算法", "机器人", "C#"],
-    role: "核心开发",
-    highlight: "每层 5 包（2 横 + 3 竖），按层级从低到高放置。",
-    body: "## 项目背景\n\n三抓手码垛需要在有限空间内稳定堆叠五花垛。核心难点在于**横包可合并、竖包需独立旋转放置**，且每层 5 包（2 横 + 3 竖）的约束导致放包次序必须精确规划。\n\n## 核心算法\n\n采用**贪心算法**逐层求解：\n\n1. 每次抓取 3 个横包，按层级从低到高放置；\n2. 放满当前层后 Z 轴升高，进入下一层；\n3. 放包次序：层级 1 先放 `bh1 + bh2` 合并，再逐个放 `av1 / av2 / av3`；\n4. 跨层竖包（如 `bv1`）补至下一层级。\n\n## 抓手约束\n\n- 1 号抓手：禁放 b 区竖包\n- 2 号抓手：无限制\n- 3 号抓手：禁放 a 区竖包\n\n当前正在调试跨层补充逻辑，确保 `av2 / av3` 不被错误拆组。",
+    role: lt("核心开发"),
+    highlight: lt("每层 5 包（2 横 + 3 竖），按层级从低到高放置。"),
+    body: lt("## 项目背景\n\n三抓手码垛需要在有限空间内稳定堆叠五花垛。核心难点在于**横包可合并、竖包需独立旋转放置**，且每层 5 包（2 横 + 3 竖）的约束导致放包次序必须精确规划。\n\n## 核心算法\n\n采用**贪心算法**逐层求解：\n\n1. 每次抓取 3 个横包，按层级从低到高放置；\n2. 放满当前层后 Z 轴升高，进入下一层；\n3. 放包次序：层级 1 先放 `bh1 + bh2` 合并，再逐个放 `av1 / av2 / av3`；\n4. 跨层竖包（如 `bv1`）补至下一层级。\n\n## 抓手约束\n\n- 1 号抓手：禁放 b 区竖包\n- 2 号抓手：无限制\n- 3 号抓手：禁放 a 区竖包\n\n当前正在调试跨层补充逻辑，确保 `av2 / av3` 不被错误拆组。"),
   },
   {
     slug: "yueqiu8",
-    name: "约球吧小程序",
-    summary: "球类场馆预约小程序，含管理后台与 MySQL 数据层。",
+    name: lt("约球吧小程序"),
+    summary: lt("球类场馆预约小程序，含管理后台与 MySQL 数据层。"),
     tech: ["Vue", "Express", "MySQL"],
-    role: "全栈",
+    role: lt("全栈"),
     link: "https://example.com",
-    highlight: "33 页小程序 + 7 个后端路由，清爽运动风设计。",
-    body: "## 项目概况\n\n约球吧是一个球类场馆预约小程序，覆盖场馆浏览、预约、订单管理等完整闭环。\n\n## 技术架构\n\n- 小程序端：33 个页面，模块化拆分 `admin/js/`（utils + 8 个业务模块）\n- 后端：Express + MySQL2，7 个路由\n- 数据库：22 张表\n\n## 设计风格\n\n清爽运动风——透明背景、灰色边框、无重阴影。曾修复 API `snake_case` 与前端 `camelCase` 字段不匹配问题。",
+    highlight: lt("33 页小程序 + 7 个后端路由，清爽运动风设计。"),
+    body: lt("## 项目概况\n\n约球吧是一个球类场馆预约小程序，覆盖场馆浏览、预约、订单管理等完整闭环。\n\n## 技术架构\n\n- 小程序端：33 个页面，模块化拆分 `admin/js/`（utils + 8 个业务模块）\n- 后端：Express + MySQL2，7 个路由\n- 数据库：22 张表\n\n## 设计风格\n\n清爽运动风——透明背景、灰色边框、无重阴影。曾修复 API `snake_case` 与前端 `camelCase` 字段不匹配问题。"),
   },
   {
     slug: "workbuddy-space",
-    name: "WorkBuddySpace",
-    summary: "Next.js 博客与画廊，集成 admin 与 GitHub API。",
+    name: lt("WorkBuddySpace"),
+    summary: lt("Next.js 博客与画廊，集成 admin 与 GitHub API。"),
     tech: ["Next.js", "GitHub API"],
-    role: "全栈",
-    highlight: "同栈经验平滑迁移到本个人站。",
-    body: "## 简介\n\nWorkBuddySpace 是基于 Next.js 的博客 / 画廊站点，集成管理端与 GitHub API，用于内容发布与资源管理。\n\n本项目（个人技术站）复用了其同栈经验，从 Next.js + 云开发 CMS + EdgeOne 的混合架构平滑迁移而来。",
+    role: lt("全栈"),
+    highlight: lt("同栈经验平滑迁移到本个人站。"),
+    body: lt("## 简介\n\nWorkBuddySpace 是基于 Next.js 的博客 / 画廊站点，集成管理端与 GitHub API，用于内容发布与资源管理。\n\n本项目（个人技术站）复用了其同栈经验，从 Next.js + 云开发 CMS + EdgeOne 的混合架构平滑迁移而来。"),
   },
 ];
 
@@ -174,6 +190,7 @@ const LOCAL_PROFILE: Profile = {
   wechat: {
     name: "xuniw 的技术笔记",
     qr: "/wechat-official-qr.svg",
+    desc: lt("技术笔记与日常复盘会同步发布到公众号，欢迎扫码关注。"),
   },
   skills: [
     "自动化码垛",
@@ -188,9 +205,9 @@ const LOCAL_PROFILE: Profile = {
     "A股短线框架",
   ],
   timeline: [
-    { year: "2024", title: "三抓手码垛项目", desc: "主导五花垛贪心算法与跨层补充逻辑调试。" },
-    { year: "2025", title: "约球吧小程序", desc: "从 0 到 1 完成 33 页小程序与管理后台。" },
-    { year: "2026", title: "个人技术站", desc: "Next.js + 云开发 CMS + EdgeOne Makers 全栈部署。" },
+    { year: "2024", title: lt("三抓手码垛项目"), desc: lt("主导五花垛贪心算法与跨层补充逻辑调试。") },
+    { year: "2025", title: lt("约球吧小程序"), desc: lt("从 0 到 1 完成 33 页小程序与管理后台。") },
+    { year: "2026", title: lt("个人技术站"), desc: lt("Next.js + 云开发 CMS + EdgeOne Makers 全栈部署。") },
   ],
 };
 
@@ -201,10 +218,17 @@ const LOCAL_LINKS: LinkItem[] = [
 
 // 站点级默认值（CMS 未配置时的回退；上线后由 settings 集合接管）
 const LOCAL_SETTINGS: Settings = {
-  siteName: "xuniw 的技术站",
-  brand: "xuniw",
-  bio: "自动化码垛 / 机器人编程工程师。这里记录技术实践、项目复盘与一些思考。",
-  footerNote: "自动化码垛与机器人编程工程师的个人技术站，记录工程实践与思考。",
+  siteName: lt("xuniw 的技术站"),
+  brand: lt("xuniw"),
+  bio: lt("自动化码垛 / 机器人编程工程师。这里记录技术实践、项目复盘与一些思考。"),
+  footerNote: lt("自动化码垛与机器人编程工程师的个人技术站，记录工程实践与思考。"),
+  heroTag: { zh: "自动化 · 机器人 · 全栈", en: "Automation · Robotics · Full-stack" },
+  heroTitle: { zh: "你好，我是聪聪", en: "Hi, I'm congcong" },
+  heroTitleAccent: { zh: "一个自动化码垛工程师", en: "the engineer who codes robots" },
+  heroSubtitle: {
+    zh: "自动化码垛 / 机器人编程工程师，折腾全栈与个人项目。",
+    en: "Automation palletizing / robotics programmer. Tinkering with full-stack and side projects.",
+  },
   socials: [
     { type: "github", url: "https://github.com/xuniw", label: "GitHub" },
     { type: "email", url: "mailto:hello@xuniw.dev", label: "Email" },

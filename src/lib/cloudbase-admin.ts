@@ -18,7 +18,9 @@ export async function upsertDoc(
     const rest = Object.fromEntries(
       Object.entries(doc).filter(([k]) => k !== "_id")
     );
-    await db.collection(collection).doc(id).update(rest);
+    // 用 set 整文档替换，避免 update 的点号深合并与库里旧字符串字段（如 wechat.desc）
+    // 冲突（"Cannot create field 'en' in element {desc: ...}"）。rest 已含完整文档（去 _id）。
+    await db.collection(collection).doc(id).set(rest);
     return id;
   }
   const res = await db.collection(collection).add(doc);
