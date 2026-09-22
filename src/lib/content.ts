@@ -265,7 +265,24 @@ async function loadAll(): Promise<RawContent> {
   if (cache && process.env.NODE_ENV === "production") return cache;
   if (isCMSEnabled()) {
     try {
-      cache = await loadCMSContent();
+      const cms = await loadCMSContent();
+      const local = await loadLocalContent();
+      // CMS 优先，但「某个集合为空」(集合未初始化 / 数据未录入) 时回退本地对应集合。
+      // 否则 output:export 会因 generateStaticParams 返回空数组而构建失败。
+      const merged: RawContent = {
+        posts: cms.posts.length ? cms.posts : local.posts,
+        projects: cms.projects.length ? cms.projects : local.projects,
+        links: cms.links.length ? cms.links : local.links,
+        profile:
+          cms.profile.skills.length || cms.profile.timeline.length
+            ? cms.profile
+            : local.profile,
+        settings:
+          cms.settings.heroTag.zh || cms.settings.socials.length
+            ? cms.settings
+            : local.settings,
+      };
+      cache = merged;
       return cache;
     } catch (e) {
       console.warn("[content] 云开发 CMS 拉取失败，回退本地内容：", e);

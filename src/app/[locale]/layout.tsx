@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { LocaleLang } from "@/components/LocaleLang";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Analytics } from "@/components/Analytics";
@@ -86,7 +87,8 @@ export default async function LocaleLayout({
 
   return (
     <>
-      <NextIntlClientProvider messages={messages}>
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <LocaleLang />
         <ThemeProvider>
           <Header searchDocs={searchDocs} brand={localeText(settings.brand, locale as Locale)} />
           <main className="flex-1">

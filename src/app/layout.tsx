@@ -1,20 +1,17 @@
 import type { ReactNode } from "react";
 import "./globals.css";
-import { getLocale } from "next-intl/server";
 
 // 根布局持有 <html>/<head>/<body>。主题防闪烁脚本放在这里：根布局不含 [locale]
 // 动态段，切语言进行客户端导航时不会重渲染，因此脚本只渲染一次（首屏前执行防闪烁），
 // 不会再像放在 [locale] 布局里那样被当成 React 元素在客户端重渲染而触发
 // "Encountered a script tag while rendering React component" 告警。
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  let locale = "zh-CN";
-  try {
-    locale = await getLocale();
-  } catch {
-    // 非 locale 路由（如全局 not-found）下回退默认值
-  }
+//
+// 注意：根布局在 [locale] 之上，取不到当前 locale 参数，因此不能用 getLocale() 这类
+// 动态 API——否则整站会被标记为动态渲染，output:export 静态导出会直接报错。
+// <html lang> 用静态默认值，真正的 locale 由 [locale] 布局里的 LocaleLang 客户端组件同步。
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang="zh" suppressHydrationWarning>
       <head>
         {/* 提前与 Giscus 建立连接，缩短评论框外部脚本/iframe 的加载握手时间 */}
         <link rel="preconnect" href="https://giscus.app" crossOrigin="anonymous" />
